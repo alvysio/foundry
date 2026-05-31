@@ -1,0 +1,40 @@
+import { createAction } from '@activepieces/pieces-framework';
+import { HttpMethod } from '@activepieces/pieces-common';
+
+import { alvysAuth } from '../auth';
+import { alvysRequest, buildPath } from '../common/client';
+import {
+  mergeSearchBody,
+  paginationProps,
+  searchBodyProp,
+  versionProp,
+} from '../common/props';
+
+export const searchTripsAction = createAction({
+  auth: alvysAuth,
+  name: 'search_trips',
+  displayName: 'Search Trips',
+  description: 'Search trips with pagination and arbitrary filters.',
+  props: {
+    version: versionProp,
+    ...paginationProps,
+    additional: searchBodyProp,
+  },
+  async run(context) {
+    const { version, page, pageSize, includeDeleted, additional } =
+      context.propsValue;
+    return alvysRequest({
+      token: context.auth.secret_text,
+      method: HttpMethod.POST,
+      path: buildPath({ version, path: '/trips/search' }),
+      body: mergeSearchBody({
+        base: {
+          Page: page ?? 0,
+          PageSize: pageSize ?? 50,
+          IncludeDeleted: includeDeleted ?? false,
+        },
+        extra: additional,
+      }),
+    });
+  },
+});

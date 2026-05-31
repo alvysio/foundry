@@ -2007,6 +2007,9 @@
       "@activepieces/piece-alai": [
         "packages/pieces/community/alai/src/index.ts"
       ],
+      "@activepieces/piece-alvys": [
+        "packages/pieces/community/alvys/src/index.ts"
+      ],
       "@activepieces/piece-algolia": [
         "packages/pieces/community/algolia/src/index.ts"
       ],
