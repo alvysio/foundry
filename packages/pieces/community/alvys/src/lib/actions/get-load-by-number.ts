@@ -10,7 +10,7 @@ export const getLoadByNumberAction = createAction({
   name: 'get_load_by_number',
   displayName: 'Get Load',
   description:
-    'Hydrate a single load by its business load number. Returns enriched load details with all trips.',
+    'Hydrate a single load by its business load number. Returns the LoadResponse projection from the public API.',
   props: {
     version: versionPropV2,
     loadNumber: Property.ShortText({
@@ -23,10 +23,8 @@ export const getLoadByNumberAction = createAction({
     return alvysRequest({
       token: context.auth.secret_text,
       method: HttpMethod.GET,
-      path: buildPath({
-        version,
-        path: `/Loads/${encodeURIComponent(loadNumber)}/details`,
-      }),
+      path: buildPath({ version, path: '/Loads' }),
+      queryParams: { loadNumber },
     });
   },
 });

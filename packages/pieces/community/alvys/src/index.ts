@@ -13,8 +13,6 @@ import { getLoadDocumentsAction } from './lib/actions/get-load-documents';
 import { getLoadByNumberAction } from './lib/actions/get-load-by-number';
 import { getLoadRateConfirmationAction } from './lib/actions/get-load-ratecon';
 import { uploadLoadDocumentAction } from './lib/actions/upload-load-document';
-import { getCarriersByMcAction } from './lib/actions/get-carrier-by-mc';
-import { getCarrierInsuranceAction } from './lib/actions/get-carrier-insurance';
 import { createMaintenanceOrderAction } from './lib/actions/create-maintenance-order';
 
 import { searchTripsAction } from './lib/actions/search-trips';
@@ -106,8 +104,6 @@ export const alvys = createPiece({
 
     searchCarriersAction,
     getCarrierAction,
-    getCarriersByMcAction,
-    getCarrierInsuranceAction,
 
     searchCustomersAction,
     upsertCustomerAction,
