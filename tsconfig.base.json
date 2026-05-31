@@ -2010,6 +2010,18 @@
       "@activepieces/piece-alvys": [
         "packages/pieces/community/alvys/src/index.ts"
       ],
+      "@activepieces/piece-alvys-ai": [
+        "packages/pieces/community/alvys-ai/src/index.ts"
+      ],
+      "@activepieces/piece-alvys-billing": [
+        "packages/pieces/community/alvys-billing/src/index.ts"
+      ],
+      "@activepieces/piece-alvys-dispatch": [
+        "packages/pieces/community/alvys-dispatch/src/index.ts"
+      ],
+      "@activepieces/piece-alvys-documents": [
+        "packages/pieces/community/alvys-documents/src/index.ts"
+      ],
       "@activepieces/piece-algolia": [
         "packages/pieces/community/algolia/src/index.ts"
       ],
