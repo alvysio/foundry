@@ -8,7 +8,7 @@ import { versionProp } from '../common/props';
 export const recordTripArrivalAction = createAction({
   auth: alvysAuth,
   name: 'record_trip_arrival',
-  displayName: 'Record Trip Stop Arrival',
+  displayName: 'Mark Stop Arrived',
   description: 'Record the arrival time at a trip stop.',
   props: {
     version: versionProp,

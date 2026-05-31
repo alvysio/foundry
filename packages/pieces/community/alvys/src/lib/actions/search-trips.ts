@@ -13,7 +13,7 @@ import {
 export const searchTripsAction = createAction({
   auth: alvysAuth,
   name: 'search_trips',
-  displayName: 'Search Trips',
+  displayName: 'Find Trips',
   description: 'Search trips with pagination and arbitrary filters.',
   props: {
     version: versionProp,

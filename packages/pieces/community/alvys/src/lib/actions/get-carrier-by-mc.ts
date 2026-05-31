@@ -8,7 +8,7 @@ import { versionProp } from '../common/props';
 export const getCarriersByMcAction = createAction({
   auth: alvysAuth,
   name: 'get_carriers_by_mc',
-  displayName: 'Get Carriers by MC Number',
+  displayName: 'Find Carriers by MC Number',
   description:
     'Look up carriers by Motor Carrier (MC) number. Used in carrier sourcing and vetting workflows. Returns a list since MC numbers can match multiple records.',
   props: {

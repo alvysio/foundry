@@ -53,35 +53,35 @@ function buildSearchAction({
 
 export const searchTrucksAction = buildSearchAction({
   name: 'search_trucks',
-  displayName: 'Search Trucks',
+  displayName: 'Find Trucks',
   description: 'Search trucks with pagination and arbitrary filters.',
   resourcePath: '/trucks',
 });
 
 export const searchInvoicesAction = buildSearchAction({
   name: 'search_invoices',
-  displayName: 'Search Invoices',
+  displayName: 'Find Invoices',
   description: 'Search invoices with pagination and arbitrary filters.',
   resourcePath: '/invoices',
 });
 
 export const searchFuelAction = buildSearchAction({
   name: 'search_fuel',
-  displayName: 'Search Fuel Transactions',
+  displayName: 'Find Fuel Purchases',
   description: 'Search fuel transactions with pagination and filters.',
   resourcePath: '/fuel',
 });
 
 export const searchMaintenanceAction = buildSearchAction({
   name: 'search_maintenance',
-  displayName: 'Search Maintenance Records',
+  displayName: 'Find Maintenance Orders',
   description: 'Search maintenance records with pagination and filters.',
   resourcePath: '/maintenance',
 });
 
 export const searchDeductionsAction = buildSearchAction({
   name: 'search_deductions',
-  displayName: 'Search Deductions',
+  displayName: 'Find Driver Deductions',
   description: 'Search deductions with pagination and filters.',
   resourcePath: '/deductions',
 });

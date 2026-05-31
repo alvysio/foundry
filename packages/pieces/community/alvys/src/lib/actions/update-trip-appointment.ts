@@ -8,7 +8,7 @@ import { versionProp } from '../common/props';
 export const updateTripAppointmentAction = createAction({
   auth: alvysAuth,
   name: 'update_trip_appointment',
-  displayName: 'Update Trip Stop Appointment',
+  displayName: 'Schedule Stop Appointment',
   description: 'Update the appointment window and confirmation flags on a trip stop.',
   props: {
     version: versionProp,

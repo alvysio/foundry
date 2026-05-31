@@ -8,7 +8,7 @@ import { versionProp } from '../common/props';
 export const getLoadDocumentsAction = createAction({
   auth: alvysAuth,
   name: 'get_load_documents',
-  displayName: 'Get Load Documents',
+  displayName: 'List Load Documents',
   description: 'List documents attached to a load.',
   props: {
     version: versionProp,

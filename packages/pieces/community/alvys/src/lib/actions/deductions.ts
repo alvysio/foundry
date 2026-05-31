@@ -8,7 +8,7 @@ import { versionProp } from '../common/props';
 export const createOneTimeDeductionAction = createAction({
   auth: alvysAuth,
   name: 'create_one_time_deduction',
-  displayName: 'Create One-Time Deduction',
+  displayName: 'Add One-Time Driver Deduction',
   description: 'POST /deductions/once with a free-form JSON body.',
   props: {
     version: versionProp,
@@ -32,7 +32,7 @@ export const createOneTimeDeductionAction = createAction({
 export const deleteDeductionAction = createAction({
   auth: alvysAuth,
   name: 'delete_deduction',
-  displayName: 'Delete Deduction',
+  displayName: 'Delete Driver Deduction',
   description: 'Delete a deduction by id.',
   props: {
     version: versionProp,

@@ -9,7 +9,7 @@ import { versionProp } from '../common/props';
 export const uploadLoadDocumentAction = createAction({
   auth: alvysAuth,
   name: 'upload_load_document',
-  displayName: 'Upload Document to Load',
+  displayName: 'Attach Document to Load',
   description: 'Upload a document (POD, ratecon, BOL, etc.) to a load.',
   props: {
     version: versionProp,

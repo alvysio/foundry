@@ -13,7 +13,7 @@ import {
 export const searchDriversAction = createAction({
   auth: alvysAuth,
   name: 'search_drivers',
-  displayName: 'Search Drivers',
+  displayName: 'Find Drivers',
   description: 'Search drivers with pagination and arbitrary filters.',
   props: {
     version: versionProp,

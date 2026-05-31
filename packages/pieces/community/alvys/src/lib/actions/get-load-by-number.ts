@@ -8,7 +8,7 @@ import { versionPropV2 } from '../common/props';
 export const getLoadByNumberAction = createAction({
   auth: alvysAuth,
   name: 'get_load_by_number',
-  displayName: 'Get Load by Number',
+  displayName: 'Get Load',
   description:
     'Hydrate a single load by its business load number. Returns enriched load details with all trips.',
   props: {

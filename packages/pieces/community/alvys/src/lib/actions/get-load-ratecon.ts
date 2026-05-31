@@ -8,7 +8,7 @@ import { versionPropV2 } from '../common/props';
 export const getLoadRateConfirmationAction = createAction({
   auth: alvysAuth,
   name: 'get_load_ratecon',
-  displayName: 'Get Load Rate Confirmation',
+  displayName: 'Get Rate Confirmation URL',
   description:
     'Returns the customer-facing rate confirmation URL for a load. Use in auto-invoice and bill-audit workflows to match POD against the ratecon.',
   props: {

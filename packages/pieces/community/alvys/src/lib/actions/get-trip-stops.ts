@@ -8,7 +8,7 @@ import { versionProp } from '../common/props';
 export const getTripStopsAction = createAction({
   auth: alvysAuth,
   name: 'get_trip_stops',
-  displayName: 'Get Trip Stops',
+  displayName: 'List Trip Stops',
   description: 'List all stops on a trip, or fetch a single stop when a stop id is provided.',
   props: {
     version: versionProp,

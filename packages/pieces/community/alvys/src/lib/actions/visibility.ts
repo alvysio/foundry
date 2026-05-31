@@ -8,7 +8,7 @@ import { versionProp } from '../common/props';
 export const getInboundVisibilityHistoryAction = createAction({
   auth: alvysAuth,
   name: 'visibility_inbound_history',
-  displayName: 'Get Inbound Visibility History',
+  displayName: 'Get Inbound 214 Tracking History',
   description: 'Returns the inbound visibility history for a load number.',
   props: {
     version: versionProp,
@@ -33,7 +33,7 @@ export const getInboundVisibilityHistoryAction = createAction({
 export const getOutboundVisibilityHistoryAction = createAction({
   auth: alvysAuth,
   name: 'visibility_outbound_history',
-  displayName: 'Get Outbound Visibility History',
+  displayName: 'Get Outbound 214 Tracking History',
   description: 'Returns the outbound visibility history for a load number.',
   props: {
     version: versionProp,
@@ -58,7 +58,7 @@ export const getOutboundVisibilityHistoryAction = createAction({
 export const searchOutboundVisibilityErrorsAction = createAction({
   auth: alvysAuth,
   name: 'visibility_outbound_errors',
-  displayName: 'Search Outbound Visibility Errors',
+  displayName: 'Find Outbound 214 Tracking Errors',
   description: 'POST /visibility/outbound/errors with an arbitrary JSON filter body.',
   props: {
     version: versionProp,

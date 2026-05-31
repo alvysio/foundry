@@ -13,7 +13,7 @@ import {
 export const searchCustomersAction = createAction({
   auth: alvysAuth,
   name: 'search_customers',
-  displayName: 'Search Customers',
+  displayName: 'Find Customers',
   description: 'Search customers with pagination and arbitrary filters.',
   props: {
     version: versionProp,

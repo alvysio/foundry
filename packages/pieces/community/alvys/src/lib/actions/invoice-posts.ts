@@ -50,21 +50,21 @@ export const createCarrierInvoiceAction = buildInvoicePost({
 
 export const recordCarrierPaymentsAction = buildInvoicePost({
   name: 'record_carrier_payments',
-  displayName: 'Record Carrier Payments',
+  displayName: 'Apply Carrier Payment',
   description: 'POST /invoices/carrier-payments.',
   path: '/invoices/carrier-payments',
 });
 
 export const recordCustomerPaymentsAction = buildInvoicePost({
   name: 'record_customer_payments',
-  displayName: 'Record Customer Payments',
+  displayName: 'Apply Customer Payment',
   description: 'POST /invoices/customer-payments.',
   path: '/invoices/customer-payments',
 });
 
 export const recordInvoiceFinancingAction = buildInvoicePost({
   name: 'record_invoice_financing',
-  displayName: 'Record Invoice Financing',
+  displayName: 'Record Invoice Factoring',
   description: 'POST /invoices/financing.',
   path: '/invoices/financing',
 });

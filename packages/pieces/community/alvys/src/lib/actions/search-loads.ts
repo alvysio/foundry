@@ -13,7 +13,7 @@ import {
 export const searchLoadsAction = createAction({
   auth: alvysAuth,
   name: 'search_loads',
-  displayName: 'Search Loads',
+  displayName: 'Find Loads',
   description: 'Search loads with pagination, date range and status filters.',
   props: {
     version: versionProp,

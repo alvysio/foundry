@@ -13,7 +13,7 @@ import {
 export const searchCarriersAction = createAction({
   auth: alvysAuth,
   name: 'search_carriers',
-  displayName: 'Search Carriers',
+  displayName: 'Find Carriers',
   description: 'Search carriers with pagination and arbitrary filters.',
   props: {
     version: versionProp,

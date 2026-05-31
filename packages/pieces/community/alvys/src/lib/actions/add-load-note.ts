@@ -8,7 +8,7 @@ import { versionProp } from '../common/props';
 export const addLoadNoteAction = createAction({
   auth: alvysAuth,
   name: 'add_load_note',
-  displayName: 'Add Load Note',
+  displayName: 'Add Note to Load',
   description: 'Attach a new note to a load.',
   props: {
     version: versionProp,

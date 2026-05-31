@@ -80,7 +80,7 @@ export const getTrailerAction = buildGetByIdAction({
 
 export const getFuelAction = buildGetByIdAction({
   name: 'get_fuel',
-  displayName: 'Get Fuel Transaction',
+  displayName: 'Get Fuel Purchase',
   description: 'Fetch a fuel transaction by id.',
   resourcePath: '/fuel',
   idLabel: 'Fuel Id',
@@ -88,7 +88,7 @@ export const getFuelAction = buildGetByIdAction({
 
 export const getMaintenanceAction = buildGetByIdAction({
   name: 'get_maintenance',
-  displayName: 'Get Maintenance Record',
+  displayName: 'Get Maintenance Order',
   description: 'Fetch a maintenance record by id.',
   resourcePath: '/maintenance',
   idLabel: 'Maintenance Id',
@@ -96,7 +96,7 @@ export const getMaintenanceAction = buildGetByIdAction({
 
 export const getDeductionAction = buildGetByIdAction({
   name: 'get_deduction',
-  displayName: 'Get Deduction',
+  displayName: 'Get Driver Deduction',
   description: 'Fetch a deduction by id.',
   resourcePath: '/deductions',
   idLabel: 'Deduction Id',
