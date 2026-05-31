@@ -9,6 +9,13 @@ export const versionProp = Property.ShortText({
   defaultValue: ALVYS_DEFAULT_VERSION,
 });
 
+export const versionPropV2 = Property.ShortText({
+  displayName: 'API Version',
+  description: 'Alvys API version segment.',
+  required: false,
+  defaultValue: '2.0',
+});
+
 export const paginationProps = {
   page: Property.Number({
     displayName: 'Page',

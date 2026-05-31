@@ -11,7 +11,11 @@ import { getLoadNotesAction } from './lib/actions/get-load-notes';
 import { addLoadNoteAction } from './lib/actions/add-load-note';
 import { getLoadDocumentsAction } from './lib/actions/get-load-documents';
 import { getLoadByNumberAction } from './lib/actions/get-load-by-number';
+import { getLoadRateConfirmationAction } from './lib/actions/get-load-ratecon';
 import { uploadLoadDocumentAction } from './lib/actions/upload-load-document';
+import { getCarriersByMcAction } from './lib/actions/get-carrier-by-mc';
+import { getCarrierInsuranceAction } from './lib/actions/get-carrier-insurance';
+import { createMaintenanceOrderAction } from './lib/actions/create-maintenance-order';
 
 import { searchTripsAction } from './lib/actions/search-trips';
 import { getTripStopsAction } from './lib/actions/get-trip-stops';
@@ -84,6 +88,7 @@ export const alvys = createPiece({
   actions: [
     searchLoadsAction,
     getLoadByNumberAction,
+    getLoadRateConfirmationAction,
     getLoadNotesAction,
     addLoadNoteAction,
     getLoadDocumentsAction,
@@ -101,6 +106,8 @@ export const alvys = createPiece({
 
     searchCarriersAction,
     getCarrierAction,
+    getCarriersByMcAction,
+    getCarrierInsuranceAction,
 
     searchCustomersAction,
     upsertCustomerAction,
@@ -121,6 +128,7 @@ export const alvys = createPiece({
 
     searchMaintenanceAction,
     getMaintenanceAction,
+    createMaintenanceOrderAction,
 
     searchDeductionsAction,
     getDeductionAction,
