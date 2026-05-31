@@ -4,6 +4,7 @@ import {
     EntitySchema,
 } from 'typeorm'
 import { AIProviderEntity } from '../ai/ai-provider-entity'
+import { OdinTierConfigEntity } from '../ai/odin/odin-tier-config-entity'
 import { PlatformAnalyticsReportEntity } from '../analytics/platform-analytics-report.entity'
 import { AppConnectionEntity } from '../app-connection/app-connection.entity'
 import { UserIdentityEntity } from '../authentication/user-identity/user-identity-entity'
@@ -90,6 +91,7 @@ function getEntities(): EntitySchema<unknown>[] {
         AlertEntity,
         UserInvitationEntity,
         AIProviderEntity,
+        OdinTierConfigEntity,
         ProjectRoleEntity,
         TableEntity,
         FieldEntity,
