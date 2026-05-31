@@ -7,21 +7,18 @@ export { alvysAuth };
 import { ALVYS_API_BASE } from './lib/common/client';
 
 import { searchLoadsAction } from './lib/actions/search-loads';
-import { listLoadsAction } from './lib/actions/list-loads';
 import { getLoadNotesAction } from './lib/actions/get-load-notes';
 import { addLoadNoteAction } from './lib/actions/add-load-note';
-import { deleteLoadNoteAction } from './lib/actions/delete-load-note';
 import { getLoadDocumentsAction } from './lib/actions/get-load-documents';
+import { getLoadByNumberAction } from './lib/actions/get-load-by-number';
+import { uploadLoadDocumentAction } from './lib/actions/upload-load-document';
 
 import { searchTripsAction } from './lib/actions/search-trips';
 import { getTripStopsAction } from './lib/actions/get-trip-stops';
 import { recordTripArrivalAction } from './lib/actions/record-trip-arrival';
 import { recordTripDepartureAction } from './lib/actions/record-trip-departure';
 import { updateTripAppointmentAction } from './lib/actions/update-trip-appointment';
-import {
-  getTripDocumentsAction,
-  deleteTripStopArrivalAction,
-} from './lib/actions/trip-documents';
+import { getTripDocumentsAction } from './lib/actions/trip-documents';
 
 import { searchDriversAction } from './lib/actions/search-drivers';
 import { getDriverAction } from './lib/actions/get-driver';
@@ -29,44 +26,23 @@ import { searchCarriersAction } from './lib/actions/search-carriers';
 import { getCarrierAction } from './lib/actions/get-carrier';
 
 import { searchCustomersAction } from './lib/actions/search-customers';
-import { listCustomersAction } from './lib/actions/list-customers';
 import { upsertCustomerAction } from './lib/actions/upsert-customer';
-import { deleteCustomerAction } from './lib/actions/delete-customer';
 
 import {
   searchTrucksAction,
-  searchTrailersAction,
   searchInvoicesAction,
-  searchLocationsAction,
-  searchTollsAction,
   searchFuelAction,
   searchMaintenanceAction,
   searchDeductionsAction,
-  searchUsersAction,
-  searchDispatchPreferencesAction,
-  searchTruckEventsAction,
-  searchTrailerEventsAction,
-  searchDriverEventsAction,
 } from './lib/actions/search-generic';
 
 import {
   getTruckAction,
   getTrailerAction,
-  getTollAction,
   getFuelAction,
   getMaintenanceAction,
   getDeductionAction,
 } from './lib/actions/get-by-id';
-
-import {
-  listDriversAction,
-  listTrucksAction,
-  listTrailersAction,
-  listInvoicesAction,
-  listLocationsAction,
-  listTripsAction,
-  listUsersAction,
-} from './lib/actions/list-resources';
 
 import {
   getInboundVisibilityHistoryAction,
@@ -107,56 +83,38 @@ export const alvys = createPiece({
   categories: [PieceCategory.BUSINESS_INTELLIGENCE],
   actions: [
     searchLoadsAction,
-    listLoadsAction,
+    getLoadByNumberAction,
     getLoadNotesAction,
     addLoadNoteAction,
-    deleteLoadNoteAction,
     getLoadDocumentsAction,
+    uploadLoadDocumentAction,
 
     searchTripsAction,
-    listTripsAction,
     getTripStopsAction,
     getTripDocumentsAction,
     recordTripArrivalAction,
     recordTripDepartureAction,
-    deleteTripStopArrivalAction,
     updateTripAppointmentAction,
 
     searchDriversAction,
-    listDriversAction,
     getDriverAction,
-    searchDriverEventsAction,
 
     searchCarriersAction,
     getCarrierAction,
 
     searchCustomersAction,
-    listCustomersAction,
     upsertCustomerAction,
-    deleteCustomerAction,
 
     searchTrucksAction,
-    listTrucksAction,
     getTruckAction,
-    searchTruckEventsAction,
 
-    searchTrailersAction,
-    listTrailersAction,
     getTrailerAction,
-    searchTrailerEventsAction,
 
     searchInvoicesAction,
-    listInvoicesAction,
     createCarrierInvoiceAction,
     recordCarrierPaymentsAction,
     recordCustomerPaymentsAction,
     recordInvoiceFinancingAction,
-
-    searchLocationsAction,
-    listLocationsAction,
-
-    searchTollsAction,
-    getTollAction,
 
     searchFuelAction,
     getFuelAction,
@@ -168,11 +126,6 @@ export const alvys = createPiece({
     getDeductionAction,
     createOneTimeDeductionAction,
     deleteDeductionAction,
-
-    searchUsersAction,
-    listUsersAction,
-
-    searchDispatchPreferencesAction,
 
     getInboundVisibilityHistoryAction,
     getOutboundVisibilityHistoryAction,

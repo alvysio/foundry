@@ -26,26 +26,3 @@ export const getTripDocumentsAction = createAction({
     });
   },
 });
-
-export const deleteTripStopArrivalAction = createAction({
-  auth: alvysAuth,
-  name: 'delete_trip_stop_arrival',
-  displayName: 'Delete Trip Stop Arrival',
-  description: 'Remove a recorded arrival from a trip stop.',
-  props: {
-    version: versionProp,
-    tripId: Property.ShortText({ displayName: 'Trip Id', required: true }),
-    stopId: Property.ShortText({ displayName: 'Stop Id', required: true }),
-  },
-  async run(context) {
-    const { version, tripId, stopId } = context.propsValue;
-    return alvysRequest({
-      token: context.auth.secret_text,
-      method: HttpMethod.DELETE,
-      path: buildPath({
-        version,
-        path: `/trips/${encodeURIComponent(tripId)}/stops/${encodeURIComponent(stopId)}/arrival`,
-      }),
-    });
-  },
-});

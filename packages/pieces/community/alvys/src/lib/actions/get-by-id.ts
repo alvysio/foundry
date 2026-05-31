@@ -78,14 +78,6 @@ export const getTrailerAction = buildGetByIdAction({
   documentsPath: '/trailers/{id}/documents',
 });
 
-export const getTollAction = buildGetByIdAction({
-  name: 'get_toll',
-  displayName: 'Get Toll',
-  description: 'Fetch a toll transaction by id.',
-  resourcePath: '/tolls',
-  idLabel: 'Toll Id',
-});
-
 export const getFuelAction = buildGetByIdAction({
   name: 'get_fuel',
   displayName: 'Get Fuel Transaction',
