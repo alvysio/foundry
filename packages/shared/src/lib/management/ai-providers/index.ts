@@ -11,6 +11,7 @@ export enum AIProviderName {
     CLOUDFLARE_GATEWAY = 'cloudflare-gateway',
     CUSTOM = 'custom',
     BEDROCK = 'bedrock',
+    ALVYS_INTELLIGENCE = 'alvys-intelligence',
 }
 
 
@@ -55,6 +56,9 @@ export const BedrockProviderAuthConfig = z.object({
     secretAccessKey: z.string().min(1),
 })
 export type BedrockProviderAuthConfig = z.infer<typeof BedrockProviderAuthConfig>
+
+export const AlvysIntelligenceProviderAuthConfig = BaseAIProviderAuthConfig
+export type AlvysIntelligenceProviderAuthConfig = z.infer<typeof AlvysIntelligenceProviderAuthConfig>
 
 export const AnthropicProviderConfig = z.object({})
 export type AnthropicProviderConfig = z.infer<typeof AnthropicProviderConfig>
@@ -112,6 +116,9 @@ export const BedrockProviderConfig = z.object({
 })
 export type BedrockProviderConfig = z.infer<typeof BedrockProviderConfig>
 
+export const AlvysIntelligenceProviderConfig = z.object({})
+export type AlvysIntelligenceProviderConfig = z.infer<typeof AlvysIntelligenceProviderConfig>
+
 export const AIProviderAuthConfig = z.union([
     AnthropicProviderAuthConfig,
     AzureProviderAuthConfig,
@@ -122,6 +129,7 @@ export const AIProviderAuthConfig = z.union([
     OpenAICompatibleProviderAuthConfig,
     ActivePiecesProviderAuthConfig,
     BedrockProviderAuthConfig,
+    AlvysIntelligenceProviderAuthConfig,
 ])
 export type AIProviderAuthConfig = z.infer<typeof AIProviderAuthConfig>
 // Order matters, put schemas with required fields first, empty ones last. This is to avoid empty objects matching any object.
@@ -135,6 +143,7 @@ export const AIProviderConfig = z.union([
     OpenAIProviderConfig,
     OpenRouterProviderConfig,
     ActivePiecesProviderConfig,
+    AlvysIntelligenceProviderConfig,
 ])
 export type AIProviderConfig = z.infer<typeof AIProviderConfig>
 
@@ -192,6 +201,12 @@ const ProviderConfigUnion = z.discriminatedUnion('provider', [
         provider: z.literal(AIProviderName.BEDROCK),
         config: BedrockProviderConfig,
         auth: BedrockProviderAuthConfig,
+    }),
+    z.object({
+        displayName: z.string().min(1),
+        provider: z.literal(AIProviderName.ALVYS_INTELLIGENCE),
+        config: AlvysIntelligenceProviderConfig,
+        auth: AlvysIntelligenceProviderAuthConfig,
     }),
 ])
 
@@ -267,6 +282,8 @@ const ANTHROPIC_OPENROUTER_CHAT_MODELS = ['claude-sonnet-4.6', 'claude-opus-4.7'
 const GOOGLE_CHAT_MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-3.1-pro-preview', 'gemini-3-flash-preview'] as const
 const X_AI_OPENROUTER_CHAT_MODELS = ['grok-4.20', 'grok-4.1-fast'] as const
 
+export const ALVYS_INTELLIGENCE_TIERS = ['alvys-fast', 'alvys-balanced', 'alvys-smart', 'alvys-long-context'] as const
+
 export const ALLOWED_CHAT_MODELS_BY_PROVIDER: Partial<Record<AIProviderName, readonly string[]>> = {
     [AIProviderName.OPENAI]: OPENAI_CHAT_MODELS,
     [AIProviderName.ANTHROPIC]: ANTHROPIC_CHAT_MODELS,
@@ -277,6 +294,7 @@ export const ALLOWED_CHAT_MODELS_BY_PROVIDER: Partial<Record<AIProviderName, rea
         ...GOOGLE_CHAT_MODELS.map((m) => `${AIProviderName.GOOGLE}/${m}`),
         ...X_AI_OPENROUTER_CHAT_MODELS.map((m) => `x-ai/${m}`),
     ],
+    [AIProviderName.ALVYS_INTELLIGENCE]: ALVYS_INTELLIGENCE_TIERS,
 }
 
 export function getEffectiveProviderAndModel({
@@ -371,6 +389,7 @@ const PROVIDER_MAX_CONTEXT_TOKENS: Partial<Record<AIProviderName, number>> = {
     [AIProviderName.AZURE]: 128_000,
     [AIProviderName.OPENROUTER]: 128_000,
     [AIProviderName.ACTIVEPIECES]: 200_000,
+    [AIProviderName.ALVYS_INTELLIGENCE]: 1_048_576,
 }
 
 function getMaxContextTokens({ provider }: { provider: AIProviderName | undefined }): number {
