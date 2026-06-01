@@ -5,7 +5,7 @@ import {
   HttpMessageBody,
 } from '@activepieces/pieces-common';
 
-export const ALVYS_API_BASE = 'https://api.alvys.com';
+export const ALVYS_API_BASE = 'https://qaapi.alvys.net';
 export const ALVYS_DEFAULT_VERSION = '1.0';
 
 export async function alvysRequest<T = unknown>({

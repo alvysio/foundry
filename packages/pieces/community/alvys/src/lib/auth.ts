@@ -19,7 +19,7 @@ JWT bearer token used to access the Alvys Public API.
       await alvysRequest({
         token: auth,
         method: HttpMethod.GET,
-        path: buildPath({ path: '/webhooks/event-types' }),
+        path: buildPath({ path: '/users/list' }),
       });
       return { valid: true };
     } catch {
