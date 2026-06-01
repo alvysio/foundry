@@ -4,6 +4,7 @@ import { alvysDocumentsAuth } from '../auth';
 
 /**
  * STUB — Alvys Document Intelligence (bem.ai-backed).
+ * Tracking: https://linear.app/alvys/issue/PLA-138, https://linear.app/alvys/issue/PLA-140
  *
  * Backend route (pending): POST /api/p/v1.0/Documents/extract
  *
@@ -94,7 +95,7 @@ export const extractDocumentAction = createAction({
   },
   async run() {
     throw new Error(
-      'Not yet implemented. Awaiting Alvys Document Intelligence rollout: POST /api/p/v1.0/Documents/extract.',
+      'Not yet implemented (PLA-138). Awaiting Alvys Document Intelligence rollout: POST /api/p/v1.0/Documents/extract. Track progress at https://linear.app/alvys/issue/PLA-138.',
     );
   },
 });

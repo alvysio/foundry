@@ -4,6 +4,7 @@ import { alvysBillingAuth } from '../auth';
 
 /**
  * STUB — pending backend Tier 2 PR which exposes
+ * Tracking: https://linear.app/alvys/issue/PLA-133
  * POST /api/p/v2.0/Loads/{loadNumber}/invoice/draft
  * with DualPermission(EditInvoices, Permissions.Invoice.Create).
  *
@@ -22,7 +23,7 @@ export const draftCustomerInvoiceAction = createAction({
   },
   async run() {
     throw new Error(
-      'Not yet implemented. Awaiting backend Tier 2 PR: POST /api/p/v2.0/Loads/{loadNumber}/invoice/draft.',
+      'Not yet implemented (PLA-133). Awaiting backend Tier 2 PR: POST /api/p/v2.0/Loads/{loadNumber}/invoice/draft. Track progress at https://linear.app/alvys/issue/PLA-133.',
     );
   },
 });

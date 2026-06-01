@@ -4,6 +4,7 @@ import { alvysAiAuth } from '../auth';
 
 /**
  * STUB — Alvys AI token broker.
+ * Tracking: https://linear.app/alvys/issue/PLA-136, https://linear.app/alvys/issue/PLA-140
  *
  * Backend route (pending): POST /api/p/v1.0/Ai/prompt
  * Routes to Anthropic / OpenAI / Gemini server-side. Customer never sees
@@ -82,7 +83,7 @@ export const aiPromptAction = createAction({
   },
   async run() {
     throw new Error(
-      'Not yet implemented. Awaiting Alvys AI broker rollout: POST /api/p/v1.0/Ai/prompt.',
+      'Not yet implemented (PLA-136). Awaiting Alvys AI broker rollout: POST /api/p/v1.0/Ai/prompt. Track progress at https://linear.app/alvys/issue/PLA-136.',
     );
   },
 });

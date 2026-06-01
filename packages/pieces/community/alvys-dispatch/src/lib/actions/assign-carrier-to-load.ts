@@ -4,6 +4,7 @@ import { alvysDispatchAuth } from '../auth';
 
 /**
  * STUB — pending backend Tier 2 PR which exposes
+ * Tracking: https://linear.app/alvys/issue/PLA-131
  * POST /api/p/v2.0/Loads/{loadNumber}/assign-carrier
  * with DualPermission(EditLoads, Permissions.Load.Update).
  *
@@ -25,7 +26,7 @@ export const assignCarrierToLoadAction = createAction({
   },
   async run() {
     throw new Error(
-      'Not yet implemented. Awaiting backend Tier 2 PR: POST /api/p/v2.0/Loads/{loadNumber}/assign-carrier.',
+      'Not yet implemented (PLA-131). Awaiting backend Tier 2 PR: POST /api/p/v2.0/Loads/{loadNumber}/assign-carrier. Track progress at https://linear.app/alvys/issue/PLA-131.',
     );
   },
 });

@@ -4,6 +4,7 @@ import { alvysBillingAuth } from '../auth';
 
 /**
  * STUB — pending backend Tier 3 PR which exposes
+ * Tracking: https://linear.app/alvys/issue/PLA-134, https://linear.app/alvys/issue/PLA-140
  * POST /api/p/v1.0/DriverSettlements/drafts/items
  * gated by the DriverSettlements tenant feature flag.
  */
@@ -24,7 +25,7 @@ export const draftDriverSettlementAction = createAction({
   },
   async run() {
     throw new Error(
-      'Not yet implemented. Awaiting backend Tier 3 PR: POST /api/p/v1.0/DriverSettlements/drafts/items.',
+      'Not yet implemented (PLA-134). Awaiting backend Tier 3 PR: POST /api/p/v1.0/DriverSettlements/drafts/items. Track progress at https://linear.app/alvys/issue/PLA-134.',
     );
   },
 });

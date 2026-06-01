@@ -4,6 +4,7 @@ import { alvysDocumentsAuth } from '../auth';
 
 /**
  * STUB — Alvys Document Intelligence pipeline factory.
+ * Tracking: https://linear.app/alvys/issue/PLA-139, https://linear.app/alvys/issue/PLA-140
  *
  * Backend route (pending): POST /api/p/v1.0/Documents/pipelines
  *
@@ -65,7 +66,7 @@ export const buildExtractPipelineAction = createAction({
   },
   async run() {
     throw new Error(
-      'Not yet implemented. Awaiting Alvys Document Intelligence rollout: POST /api/p/v1.0/Documents/pipelines.',
+      'Not yet implemented (PLA-139). Awaiting Alvys Document Intelligence rollout: POST /api/p/v1.0/Documents/pipelines. Track progress at https://linear.app/alvys/issue/PLA-139.',
     );
   },
 });

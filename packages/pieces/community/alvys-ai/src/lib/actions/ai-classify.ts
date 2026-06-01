@@ -4,6 +4,7 @@ import { alvysAiAuth } from '../auth';
 
 /**
  * STUB — Alvys AI broker classification primitive.
+ * Tracking: https://linear.app/alvys/issue/PLA-137, https://linear.app/alvys/issue/PLA-140
  * Backend route (pending): POST /api/p/v1.0/Ai/classify
  */
 export const aiClassifyAction = createAction({
@@ -32,7 +33,7 @@ export const aiClassifyAction = createAction({
   },
   async run() {
     throw new Error(
-      'Not yet implemented. Awaiting Alvys AI broker rollout: POST /api/p/v1.0/Ai/classify.',
+      'Not yet implemented (PLA-137). Awaiting Alvys AI broker rollout: POST /api/p/v1.0/Ai/classify. Track progress at https://linear.app/alvys/issue/PLA-137.',
     );
   },
 });
