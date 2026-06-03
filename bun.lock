@@ -481,7 +481,7 @@
     },
     "packages/pieces/community/ai": {
       "name": "@activepieces/piece-ai",
-      "version": "0.4.1",
+      "version": "0.5.0",
       "dependencies": {
         "@activepieces/pieces-common": "workspace:*",
         "@activepieces/pieces-framework": "workspace:*",
@@ -639,11 +639,9 @@
       "name": "@activepieces/piece-alvys",
       "version": "0.0.1",
       "dependencies": {
-        "@activepieces/piece-ai": "workspace:*",
         "@activepieces/pieces-common": "workspace:*",
         "@activepieces/pieces-framework": "workspace:*",
         "@activepieces/shared": "workspace:*",
-        "ai": "6.0.170",
         "tslib": "2.6.2",
       },
     },

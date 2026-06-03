@@ -1,12 +1,12 @@
-import { createAction, Property } from '@activepieces/pieces-framework';
-
-import { alvysAuth } from '../../auth';
+import { createAction, PieceAuth, Property } from '@activepieces/pieces-framework';
+import { AIProviderName } from '@activepieces/shared';
+import { aiProps } from '../../common/props';
 
 /**
- * STUB — Alvys Document Intelligence pipeline factory.
+ * Document Extraction Pipeline factory — proxy layer.
  * Tracking: https://linear.app/alvys/issue/PLA-139, https://linear.app/alvys/issue/PLA-140
  *
- * Backend route (pending): POST /api/p/v1.0/Documents/pipelines
+ * Backend route (pending): `POST <provider-base>/documents/pipelines`
  *
  * A pipeline represents a recurring extraction contract: e.g. "every
  * carrier-invoice attached to a load goes through this schema, then
@@ -16,13 +16,17 @@ import { alvysAuth } from '../../auth';
  * referenced from event triggers (load.document.uploaded, etc.) and from
  * other workflows.
  */
-export const buildExtractPipelineAction = createAction({
-  auth: alvysAuth,
-  name: 'build_extract_pipeline',
+export const buildExtractPipeline = createAction({
+  auth: PieceAuth.None(),
+  name: 'buildExtractPipeline',
   displayName: 'Build Document Extract Pipeline',
   description:
     'Define a reusable extract pipeline. Pairs a document type with a target entity and post-extract actions (write back, route, escalate). Returns a pipelineId you can reference from triggers.',
   props: {
+    provider: aiProps({
+      modelType: 'text',
+      allowedProviders: [AIProviderName.ALVYS_INTELLIGENCE],
+    }).provider,
     name: Property.ShortText({ displayName: 'Pipeline Name', required: true }),
     documentType: Property.ShortText({
       displayName: 'Document Type',
@@ -66,7 +70,7 @@ export const buildExtractPipelineAction = createAction({
   },
   async run() {
     throw new Error(
-      'Not yet implemented (PLA-139). Awaiting Alvys Document Intelligence rollout: POST /api/p/v1.0/Documents/pipelines. Track progress at https://linear.app/alvys/issue/PLA-139.',
+      'Not yet implemented (PLA-139). Awaiting document extraction proxy rollout: POST <provider-base>/documents/pipelines. Track progress at https://linear.app/alvys/issue/PLA-139.',
     );
   },
 });

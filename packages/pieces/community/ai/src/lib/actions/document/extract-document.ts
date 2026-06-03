@@ -1,32 +1,36 @@
-import { createAction, Property } from '@activepieces/pieces-framework';
-
-import { alvysAuth } from '../../auth';
+import { createAction, PieceAuth, Property } from '@activepieces/pieces-framework';
+import { AIProviderName } from '@activepieces/shared';
+import { aiProps } from '../../common/props';
 
 /**
- * STUB — Alvys Document Intelligence (bem.ai-backed).
+ * Document Extraction — proxy layer.
+ *
  * Tracking: https://linear.app/alvys/issue/PLA-138, https://linear.app/alvys/issue/PLA-140
  *
- * Backend route (pending): POST /api/p/v1.0/Documents/extract
+ * Backend route (pending): `POST <provider-base>/documents/extract`
  *
- * The Alvys backend:
- *   1. Resolves the document type → canonical schema (POD, ratecon, BOL, COI, MVR, IFTA).
+ * For the Alvys Intelligence provider the backend:
+ *   1. Resolves the document type → canonical schema (POD, ratecon, BOL, COI, MVR, IFTA, …).
  *   2. Auto-injects the schema PLUS the per-tenant custom references configured
  *      for the associated entity (load, trip, driver, truck, trailer, carrier).
  *   3. Calls bem.ai's extract pipeline with the merged schema.
  *   4. Returns normalized structured output keyed by the canonical field names.
- *   5. Writes the extracted record to Cosmos and emits a document.extracted event.
  *
  * Customers never see bem credentials or schema mechanics — they pick the doc
  * type and the entity it attaches to.
  */
-export const extractDocumentAction = createAction({
-  auth: alvysAuth,
-  name: 'extract_document',
+export const extractDocument = createAction({
+  auth: PieceAuth.None(),
+  name: 'extractDocument',
   displayName: 'Extract Document',
   description:
-    'Extract structured data from a transportation document. Alvys auto-injects the schema for the chosen document type plus any tenant-specific custom references for the linked entity.',
+    'Extract structured data from a transportation document. The selected AI provider injects the canonical schema for the chosen document type plus any tenant custom references for the linked entity.',
   props: {
-    documentType: Property.StaticDropdown({
+    provider: aiProps({
+      modelType: 'text',
+      allowedProviders: [AIProviderName.ALVYS_INTELLIGENCE],
+    }).provider,
+    documentType: Property.StaticDropdown<string>({
       displayName: 'Document Type',
       required: true,
       options: {
@@ -48,10 +52,10 @@ export const extractDocumentAction = createAction({
         ],
       },
     }),
-    entityType: Property.StaticDropdown({
+    entityType: Property.StaticDropdown<string>({
       displayName: 'Linked Entity Type',
       description:
-        'Alvys hydrates the entity record and merges its custom-reference schema into the extraction.',
+        'The provider hydrates the entity record and merges its custom-reference schema into the extraction.',
       required: true,
       options: {
         options: [
@@ -82,20 +86,20 @@ export const extractDocumentAction = createAction({
     extraSchema: Property.Json({
       displayName: 'Extra Fields (Optional)',
       description:
-        'JSON Schema fragment to append to the canonical schema. Use sparingly — most fields should be modeled as tenant custom references in Alvys instead.',
+        'JSON Schema fragment to append to the canonical schema. Use sparingly — most fields should be modeled as tenant custom references.',
       required: false,
     }),
     attachToEntity: Property.Checkbox({
       displayName: 'Attach Document to Entity',
       description:
-        'When checked, Alvys also stores the uploaded document on the linked entity (e.g. POD onto the load).',
+        'When checked, the provider also stores the uploaded document on the linked entity (e.g. POD onto the load).',
       required: false,
       defaultValue: true,
     }),
   },
   async run() {
     throw new Error(
-      'Not yet implemented (PLA-138). Awaiting Alvys Document Intelligence rollout: POST /api/p/v1.0/Documents/extract. Track progress at https://linear.app/alvys/issue/PLA-138.',
+      'Not yet implemented (PLA-138). Awaiting document extraction proxy rollout: POST <provider-base>/documents/extract. Track progress at https://linear.app/alvys/issue/PLA-138.',
     );
   },
 });

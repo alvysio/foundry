@@ -81,13 +81,6 @@ import { draftCustomerInvoiceAction } from './lib/actions/billing/draft-customer
 import { draftDriverSettlementAction } from './lib/actions/billing/draft-driver-settlement';
 import { sendEdi210Action } from './lib/actions/billing/send-edi-210';
 
-import { extractDocumentAction } from './lib/actions/documents/extract-document';
-import { buildExtractPipelineAction } from './lib/actions/documents/build-extract-pipeline';
-
-import { askAlvysAiAction } from './lib/actions/ai/ask-alvys-ai';
-import { classifyWithAlvysAiAction } from './lib/actions/ai/classify-with-alvys-ai';
-import { extractStructuredDataWithAlvysAiAction } from './lib/actions/ai/extract-structured-data';
-
 export const alvys = createPiece({
   displayName: 'Alvys',
   description:
@@ -99,22 +92,14 @@ export const alvys = createPiece({
   categories: [
     PieceCategory.BUSINESS_INTELLIGENCE,
     PieceCategory.ACCOUNTING,
-    PieceCategory.ARTIFICIAL_INTELLIGENCE,
   ],
   actions: [
-    askAlvysAiAction,
-    classifyWithAlvysAiAction,
-    extractStructuredDataWithAlvysAiAction,
-
     assignCarrierToLoadAction,
     postLoadStatusAction,
 
     draftCustomerInvoiceAction,
     draftDriverSettlementAction,
     sendEdi210Action,
-
-    extractDocumentAction,
-    buildExtractPipelineAction,
 
     searchLoadsAction,
     getLoadByNumberAction,
