@@ -639,39 +639,11 @@
       "name": "@activepieces/piece-alvys",
       "version": "0.0.1",
       "dependencies": {
+        "@activepieces/piece-ai": "workspace:*",
         "@activepieces/pieces-common": "workspace:*",
         "@activepieces/pieces-framework": "workspace:*",
         "@activepieces/shared": "workspace:*",
-        "tslib": "2.6.2",
-      },
-    },
-    "packages/pieces/community/alvys-billing": {
-      "name": "@activepieces/piece-alvys-billing",
-      "version": "0.0.1",
-      "dependencies": {
-        "@activepieces/pieces-common": "workspace:*",
-        "@activepieces/pieces-framework": "workspace:*",
-        "@activepieces/shared": "workspace:*",
-        "tslib": "2.6.2",
-      },
-    },
-    "packages/pieces/community/alvys-dispatch": {
-      "name": "@activepieces/piece-alvys-dispatch",
-      "version": "0.0.1",
-      "dependencies": {
-        "@activepieces/pieces-common": "workspace:*",
-        "@activepieces/pieces-framework": "workspace:*",
-        "@activepieces/shared": "workspace:*",
-        "tslib": "2.6.2",
-      },
-    },
-    "packages/pieces/community/alvys-documents": {
-      "name": "@activepieces/piece-alvys-documents",
-      "version": "0.0.1",
-      "dependencies": {
-        "@activepieces/pieces-common": "workspace:*",
-        "@activepieces/pieces-framework": "workspace:*",
-        "@activepieces/shared": "workspace:*",
+        "ai": "6.0.170",
         "tslib": "2.6.2",
       },
     },
@@ -8834,12 +8806,6 @@
     "@activepieces/piece-alttextify": ["@activepieces/piece-alttextify@workspace:packages/pieces/community/alttextify"],
 
     "@activepieces/piece-alvys": ["@activepieces/piece-alvys@workspace:packages/pieces/community/alvys"],
-
-    "@activepieces/piece-alvys-billing": ["@activepieces/piece-alvys-billing@workspace:packages/pieces/community/alvys-billing"],
-
-    "@activepieces/piece-alvys-dispatch": ["@activepieces/piece-alvys-dispatch@workspace:packages/pieces/community/alvys-dispatch"],
-
-    "@activepieces/piece-alvys-documents": ["@activepieces/piece-alvys-documents@workspace:packages/pieces/community/alvys-documents"],
 
     "@activepieces/piece-amazon-bedrock": ["@activepieces/piece-amazon-bedrock@workspace:packages/pieces/community/amazon-bedrock"],
 

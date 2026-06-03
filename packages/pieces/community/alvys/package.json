@@ -8,9 +8,11 @@
     "lint": "eslint 'src/**/*.ts'"
   },
   "dependencies": {
+    "@activepieces/piece-ai": "workspace:*",
     "@activepieces/pieces-common": "workspace:*",
     "@activepieces/pieces-framework": "workspace:*",
     "@activepieces/shared": "workspace:*",
+    "ai": "6.0.170",
     "tslib": "2.6.2"
   }
 }

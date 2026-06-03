@@ -196,6 +196,25 @@ export async function createAIModel({
             const openRouterProvider = createOpenRouter({ apiKey })
             return openRouterProvider.chat(modelId) as LanguageModel
         }
+        case AIProviderName.ALVYS_INTELLIGENCE: {
+            const { apiKey } = auth as BaseAIProviderAuthConfig
+            const baseUrl = process.env['ODIN_INTERNAL_BASE_URL'] ?? 'http://127.0.0.1:3000'
+            const provider = createOpenAICompatible({
+                name: 'alvys-intelligence',
+                baseURL: `${baseUrl}/v1/odin`,
+                headers: {
+                    Authorization: `Bearer ${apiKey}`,
+                    'x-ap-project-id': projectId,
+                    'x-ap-platform-id': platformId,
+                    'x-ap-flow-id': flowId,
+                    'x-ap-run-id': runId,
+                },
+            })
+            if (isImage) {
+                throw new Error('Alvys Intelligence does not support image models')
+            }
+            return provider.chatModel(modelId)
+        }
         default:
             throw new Error(`Provider ${provider} is not supported`)
     }

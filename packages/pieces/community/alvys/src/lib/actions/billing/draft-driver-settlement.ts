@@ -1,6 +1,6 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
 
-import { alvysBillingAuth } from '../auth';
+import { alvysAuth } from '../../auth';
 
 /**
  * STUB — pending backend Tier 3 PR which exposes
@@ -9,7 +9,7 @@ import { alvysBillingAuth } from '../auth';
  * gated by the DriverSettlements tenant feature flag.
  */
 export const draftDriverSettlementAction = createAction({
-  auth: alvysBillingAuth,
+  auth: alvysAuth,
   name: 'draft_driver_settlement',
   displayName: 'Draft Driver Settlement',
   description:

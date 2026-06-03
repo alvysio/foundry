@@ -1,6 +1,6 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
 
-import { alvysDispatchAuth } from '../auth';
+import { alvysAuth } from '../../auth';
 
 /**
  * STUB — pending backend Tier 2 PR which exposes
@@ -11,7 +11,7 @@ import { alvysDispatchAuth } from '../auth';
  * Allowed transition set validated server-side.
  */
 export const postLoadStatusAction = createAction({
-  auth: alvysDispatchAuth,
+  auth: alvysAuth,
   name: 'post_load_status',
   displayName: 'Post Load Status Update',
   description:

@@ -1,6 +1,6 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
 
-import { alvysDocumentsAuth } from '../auth';
+import { alvysAuth } from '../../auth';
 
 /**
  * STUB — Alvys Document Intelligence (bem.ai-backed).
@@ -20,7 +20,7 @@ import { alvysDocumentsAuth } from '../auth';
  * type and the entity it attaches to.
  */
 export const extractDocumentAction = createAction({
-  auth: alvysDocumentsAuth,
+  auth: alvysAuth,
   name: 'extract_document',
   displayName: 'Extract Document',
   description:

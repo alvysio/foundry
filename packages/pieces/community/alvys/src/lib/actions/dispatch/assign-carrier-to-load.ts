@@ -1,6 +1,6 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
 
-import { alvysDispatchAuth } from '../auth';
+import { alvysAuth } from '../../auth';
 
 /**
  * STUB — pending backend Tier 2 PR which exposes
@@ -11,7 +11,7 @@ import { alvysDispatchAuth } from '../auth';
  * Server forces Source='public_api' and validates carrier/asset tenant ownership.
  */
 export const assignCarrierToLoadAction = createAction({
-  auth: alvysDispatchAuth,
+  auth: alvysAuth,
   name: 'assign_carrier_to_load',
   displayName: 'Assign Carrier to Load',
   description:

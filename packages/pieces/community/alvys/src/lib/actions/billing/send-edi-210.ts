@@ -1,6 +1,6 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
 
-import { alvysBillingAuth } from '../auth';
+import { alvysAuth } from '../../auth';
 
 /**
  * STUB — pending backend Tier 3 PR which exposes
@@ -9,7 +9,7 @@ import { alvysBillingAuth } from '../auth';
  * with idempotency guard to prevent double-billing.
  */
 export const sendEdi210Action = createAction({
-  auth: alvysBillingAuth,
+  auth: alvysAuth,
   name: 'send_edi_210',
   displayName: 'Send EDI 210 Invoice',
   description:

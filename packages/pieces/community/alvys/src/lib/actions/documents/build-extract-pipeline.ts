@@ -1,6 +1,6 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
 
-import { alvysDocumentsAuth } from '../auth';
+import { alvysAuth } from '../../auth';
 
 /**
  * STUB — Alvys Document Intelligence pipeline factory.
@@ -17,7 +17,7 @@ import { alvysDocumentsAuth } from '../auth';
  * other workflows.
  */
 export const buildExtractPipelineAction = createAction({
-  auth: alvysDocumentsAuth,
+  auth: alvysAuth,
   name: 'build_extract_pipeline',
   displayName: 'Build Document Extract Pipeline',
   description:

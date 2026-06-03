@@ -1,6 +1,6 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
 
-import { alvysBillingAuth } from '../auth';
+import { alvysAuth } from '../../auth';
 
 /**
  * STUB — pending backend Tier 2 PR which exposes
@@ -11,7 +11,7 @@ import { alvysBillingAuth } from '../auth';
  * Server hardcodes SubmitInvoices=false — drafting only, never submission.
  */
 export const draftCustomerInvoiceAction = createAction({
-  auth: alvysBillingAuth,
+  auth: alvysAuth,
   name: 'draft_customer_invoice',
   displayName: 'Draft Customer Invoice',
   description:
