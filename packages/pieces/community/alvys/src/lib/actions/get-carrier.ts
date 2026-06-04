@@ -28,7 +28,7 @@ export const getCarrierAction = createAction({
       ? `/carriers/${encodeURIComponent(carrierId)}/documents`
       : `/carriers/${encodeURIComponent(carrierId)}`;
     return alvysRequest({
-      token: context.auth.secret_text,
+      auth: context.auth, store: context.store,
       method: HttpMethod.GET,
       path: buildPath({ version, path }),
     });

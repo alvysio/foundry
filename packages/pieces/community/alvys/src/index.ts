@@ -4,7 +4,9 @@ import { PieceCategory } from '@activepieces/shared';
 
 import { alvysAuth } from './lib/auth';
 export { alvysAuth };
-import { ALVYS_API_BASE } from './lib/common/client';
+import { alvysApiBase } from './lib/common/client';
+import { alvysTokenService } from './lib/common/token-service';
+import type { AlvysAuthValue } from './lib/common/types';
 
 import { searchLoadsAction } from './lib/actions/search-loads';
 import { getLoadNotesAction } from './lib/actions/get-load-notes';
@@ -153,11 +155,20 @@ export const alvys = createPiece({
     searchOutboundVisibilityErrorsAction,
 
     createCustomApiCallAction({
-      baseUrl: () => ALVYS_API_BASE,
+      baseUrl: (auth) => alvysApiBase(auth),
       auth: alvysAuth,
-      authMapping: async (auth) => ({
-        Authorization: `Bearer ${(auth as { secret_text: string }).secret_text}`,
-      }),
+      authMapping: async (auth) => {
+        const raw = auth as unknown as { props?: { environment?: string; clientId?: string; clientSecret?: string }; environment?: string; clientId?: string; clientSecret?: string };
+        const src = raw?.props ?? raw;
+        const token = await alvysTokenService.resolveAlvysToken({
+          auth: {
+            environment: src?.environment ?? 'production',
+            clientId: src?.clientId ?? '',
+            clientSecret: src?.clientSecret ?? '',
+          },
+        });
+        return { Authorization: `Bearer ${token}` };
+      },
     }),
   ],
   triggers: [

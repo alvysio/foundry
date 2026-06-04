@@ -3,7 +3,8 @@ import { httpClient, HttpMethod } from '@activepieces/pieces-common';
 import FormData from 'form-data';
 
 import { alvysAuth } from '../auth';
-import { ALVYS_API_BASE, buildPath } from '../common/client';
+import { alvysApiBase, buildPath } from '../common/client';
+import { alvysTokenService } from '../common/token-service';
 import { versionProp } from '../common/props';
 
 export const uploadLoadDocumentAction = createAction({
@@ -44,11 +45,23 @@ export const uploadLoadDocumentAction = createAction({
       path: `/loads/${encodeURIComponent(loadNumber)}/document`,
     });
 
+    const raw = context.auth as unknown as { props?: { environment?: string; clientId?: string; clientSecret?: string }; environment?: string; clientId?: string; clientSecret?: string };
+    const src = raw?.props ?? raw;
+    const normalizedAuth = {
+      environment: src?.environment ?? 'production',
+      clientId: src?.clientId ?? '',
+      clientSecret: src?.clientSecret ?? '',
+    };
+    const token = await alvysTokenService.resolveAlvysToken({
+      auth: normalizedAuth,
+      store: context.store,
+    });
+
     const response = await httpClient.sendRequest({
       method: HttpMethod.POST,
-      url: `${ALVYS_API_BASE}${path}`,
+      url: `${alvysApiBase(context.auth)}${path}`,
       headers: {
-        Authorization: `Bearer ${context.auth.secret_text}`,
+        Authorization: `Bearer ${token}`,
         ...formData.getHeaders(),
       },
       body: formData,

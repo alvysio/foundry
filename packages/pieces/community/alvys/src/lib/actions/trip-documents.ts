@@ -17,7 +17,7 @@ export const getTripDocumentsAction = createAction({
   async run(context) {
     const { version, tripId } = context.propsValue;
     return alvysRequest({
-      token: context.auth.secret_text,
+      auth: context.auth, store: context.store,
       method: HttpMethod.GET,
       path: buildPath({
         version,

@@ -32,7 +32,7 @@ function buildInvoicePost({
     async run(context) {
       const { version, body } = context.propsValue;
       return alvysRequest({
-        token: context.auth.secret_text,
+        auth: context.auth, store: context.store,
         method: HttpMethod.POST,
         path: buildPath({ version, path }),
         body,

@@ -50,7 +50,7 @@ function buildGetByIdAction({
           ? documentsPath.replace('{id}', encodeURIComponent(id))
           : `${resourcePath}/${encodeURIComponent(id)}`;
       return alvysRequest({
-        token: context.auth.secret_text,
+        auth: context.auth, store: context.store,
         method: HttpMethod.GET,
         path: buildPath({ version, path }),
       });

@@ -21,7 +21,7 @@ export const getLoadByNumberAction = createAction({
   async run(context) {
     const { version, loadNumber } = context.propsValue;
     return alvysRequest({
-      token: context.auth.secret_text,
+      auth: context.auth, store: context.store,
       method: HttpMethod.GET,
       path: buildPath({ version, path: '/Loads' }),
       queryParams: { loadNumber },

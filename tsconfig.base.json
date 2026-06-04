@@ -2010,6 +2010,9 @@
       "@activepieces/piece-alvys": [
         "packages/pieces/community/alvys/src/index.ts"
       ],
+      "@activepieces/piece-alvys-intelligence": [
+        "packages/pieces/community/alvys-intelligence/src/index.ts"
+      ],
 "@activepieces/piece-algolia": [
         "packages/pieces/community/algolia/src/index.ts"
       ],

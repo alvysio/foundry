@@ -71,7 +71,7 @@ export function createAlvysWebhookTrigger({
         version,
       } = context.propsValue;
       const response = await alvysRequest<{ Id?: string; id?: string }>({
-        token: context.auth.secret_text,
+        auth: context.auth, store: context.store,
         method: HttpMethod.POST,
         path: buildPath({ version, path: '/webhooks' }),
         body: {
@@ -92,7 +92,7 @@ export function createAlvysWebhookTrigger({
       if (!id) return;
       try {
         await alvysRequest({
-          token: context.auth.secret_text,
+          auth: context.auth, store: context.store,
           method: HttpMethod.DELETE,
           path: buildPath({
             version,

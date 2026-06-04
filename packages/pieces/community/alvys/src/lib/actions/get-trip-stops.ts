@@ -25,7 +25,7 @@ export const getTripStopsAction = createAction({
       ? `/${encodeURIComponent(stopId)}`
       : '';
     return alvysRequest({
-      token: context.auth.secret_text,
+      auth: context.auth, store: context.store,
       method: HttpMethod.GET,
       path: buildPath({
         version,

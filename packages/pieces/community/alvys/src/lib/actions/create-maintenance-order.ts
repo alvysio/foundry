@@ -56,7 +56,7 @@ export const createMaintenanceOrderAction = createAction({
       Object.assign(body, extra);
     }
     return alvysRequest({
-      token: context.auth.secret_text,
+      auth: context.auth, store: context.store,
       method: HttpMethod.POST,
       path: buildPath({ version, path: '/Maintenance' }),
       body,

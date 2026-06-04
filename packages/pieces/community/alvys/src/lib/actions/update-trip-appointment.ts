@@ -68,7 +68,7 @@ export const updateTripAppointmentAction = createAction({
     if (windowBegin) body['WindowBegin'] = windowBegin;
     if (windowEnd) body['WindowEnd'] = windowEnd;
     return alvysRequest({
-      token: context.auth.secret_text,
+      auth: context.auth, store: context.store,
       method: HttpMethod.PUT,
       path: buildPath({
         version,

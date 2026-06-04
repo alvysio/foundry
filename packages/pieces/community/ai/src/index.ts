@@ -7,8 +7,6 @@ import { generateImageAction } from "./lib/actions/image/generate-image";
 import { classifyText } from "./lib/actions/utility/classify-text";
 import { extractStructuredData } from "./lib/actions/utility/extract-structured-data";
 import { runAgent } from "./lib/actions/agents/run-agent";
-import { extractDocument } from "./lib/actions/document/extract-document";
-import { buildExtractPipeline } from "./lib/actions/document/build-extract-pipeline";
 
 
 export const ai = createPiece({
@@ -21,7 +19,7 @@ export const ai = createPiece({
   ],
   logoUrl: "https://cdn.activepieces.com/pieces/new-core/text-ai.svg",
   authors: ['anasbarg', 'amrdb', 'Louai-Zokerburg'],
-  actions: [askAI, summarizeText, generateImageAction, classifyText, extractStructuredData, runAgent, extractDocument, buildExtractPipeline],
+  actions: [askAI, summarizeText, generateImageAction, classifyText, extractStructuredData, runAgent],
   triggers: [],
 });
 

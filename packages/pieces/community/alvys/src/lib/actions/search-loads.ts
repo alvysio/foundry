@@ -76,7 +76,7 @@ export const searchLoadsAction = createAction({
       };
     }
     return alvysRequest({
-      token: context.auth.secret_text,
+      auth: context.auth, store: context.store,
       method: HttpMethod.POST,
       path: buildPath({ version, path: '/loads/search' }),
       body: mergeSearchBody({ base, extra: additional }),

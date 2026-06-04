@@ -74,7 +74,7 @@ export const upsertCustomerAction = createAction({
     }
     if (customerId) {
       return alvysRequest({
-        token: context.auth.secret_text,
+        auth: context.auth, store: context.store,
         method: HttpMethod.PATCH,
         path: buildPath({
           version,
@@ -84,7 +84,7 @@ export const upsertCustomerAction = createAction({
       });
     }
     return alvysRequest({
-      token: context.auth.secret_text,
+      auth: context.auth, store: context.store,
       method: HttpMethod.POST,
       path: buildPath({ version, path: '/customers' }),
       body,

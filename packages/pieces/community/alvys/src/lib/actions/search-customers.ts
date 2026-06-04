@@ -24,7 +24,7 @@ export const searchCustomersAction = createAction({
     const { version, page, pageSize, includeDeleted, additional } =
       context.propsValue;
     return alvysRequest({
-      token: context.auth.secret_text,
+      auth: context.auth, store: context.store,
       method: HttpMethod.POST,
       path: buildPath({ version, path: '/customers/search' }),
       body: mergeSearchBody({

@@ -22,7 +22,7 @@ export const recordTripDepartureAction = createAction({
   async run(context) {
     const { version, tripId, stopId, departedAt } = context.propsValue;
     return alvysRequest({
-      token: context.auth.secret_text,
+      auth: context.auth, store: context.store,
       method: HttpMethod.PUT,
       path: buildPath({
         version,

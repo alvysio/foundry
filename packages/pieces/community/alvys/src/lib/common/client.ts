@@ -5,27 +5,45 @@ import {
   HttpMessageBody,
 } from '@activepieces/pieces-common';
 
-export const ALVYS_API_BASE = 'https://qaapi.alvys.net';
+import { alvysTokenService, AlvysStore } from './token-service';
+import { AlvysAuthValue } from './types';
+
+function normalizeAuth(input: unknown): AlvysAuthValue {
+  const v = (input ?? {}) as Record<string, unknown>;
+  const props = (v['props'] ?? v) as Record<string, unknown>;
+  return {
+    environment: String(props['environment'] ?? 'production'),
+    clientId: String(props['clientId'] ?? ''),
+    clientSecret: String(props['clientSecret'] ?? ''),
+  };
+}
+
 export const ALVYS_DEFAULT_VERSION = '1.0';
 
 export async function alvysRequest<T = unknown>({
-  token,
+  auth,
+  store,
   method,
   path,
   queryParams,
   body,
   headers,
 }: {
-  token: string;
+  auth: unknown;
+  store?: AlvysStore;
   method: HttpMethod;
   path: string;
   queryParams?: QueryParams;
   body?: unknown;
   headers?: Record<string, string>;
 }): Promise<T> {
+  const normalized = normalizeAuth(auth);
+  const token = await alvysTokenService.resolveAlvysToken({ auth: normalized, store });
+  const { apiBase } = alvysTokenService.getEnvConfig(normalized.environment);
+
   const response = await httpClient.sendRequest<T>({
     method,
-    url: `${ALVYS_API_BASE}${path}`,
+    url: `${apiBase}${path}`,
     headers: {
       Authorization: `Bearer ${token}`,
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
@@ -55,4 +73,8 @@ export function cleanPayload(
       ([, v]) => v !== undefined && v !== null && v !== '',
     ),
   );
+}
+
+export function alvysApiBase(auth: unknown): string {
+  return alvysTokenService.getEnvConfig(normalizeAuth(auth).environment).apiBase;
 }

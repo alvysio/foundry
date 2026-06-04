@@ -26,7 +26,7 @@ export const getDriverAction = createAction({
       ? `/drivers/${encodeURIComponent(driverId)}/documents`
       : `/drivers/${encodeURIComponent(driverId)}`;
     return alvysRequest({
-      token: context.auth.secret_text,
+      auth: context.auth, store: context.store,
       method: HttpMethod.GET,
       path: buildPath({ version, path }),
     });

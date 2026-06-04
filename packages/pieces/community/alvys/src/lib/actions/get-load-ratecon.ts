@@ -21,7 +21,7 @@ export const getLoadRateConfirmationAction = createAction({
   async run(context) {
     const { version, loadNumber } = context.propsValue;
     return alvysRequest<{ Url: string }>({
-      token: context.auth.secret_text,
+      auth: context.auth, store: context.store,
       method: HttpMethod.GET,
       path: buildPath({
         version,
