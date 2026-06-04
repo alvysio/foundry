@@ -31,6 +31,7 @@ import { getCarrierAction } from './lib/actions/get-carrier';
 
 import { searchCustomersAction } from './lib/actions/search-customers';
 import { upsertCustomerAction } from './lib/actions/upsert-customer';
+import { getCustomerAction } from './lib/actions/get-customer';
 
 import {
   searchTrucksAction,
@@ -125,6 +126,7 @@ export const alvys = createPiece({
     getCarrierAction,
 
     searchCustomersAction,
+    getCustomerAction,
     upsertCustomerAction,
 
     searchTrucksAction,
