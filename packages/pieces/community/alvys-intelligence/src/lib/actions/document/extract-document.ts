@@ -1,13 +1,15 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
 import { alvysIntelligenceAuth } from '../../auth';
-import {
-  DocumentTypeSchema,
-  EntityTypeSchema,
-} from '../../runtime/zod-schemas';
+import { DocumentTypeSchema, EntityTypeSchema } from '../../runtime/zod-schemas';
 import { readAuthProps } from '../../runtime/key-mapping';
 import { circuitBreaker } from '../../runtime/circuit-breaker';
 import { rateLimiter } from '../../runtime/rate-limiter';
 import { bemExtract } from '../../runtime/providers/bem';
+import {
+  resolveEffectiveConfig,
+  readConnectionConfigOverrides,
+} from '../../runtime/effective-config';
+import { advancedProp, readStepAdvanced } from '../common/advanced-prop';
 
 const DEFAULT_BASE_URL_BY_ENV: Record<string, string> = {
   production: 'https://api.bem.ai/v1',
@@ -36,7 +38,7 @@ export const extractDocument = createAction({
   name: 'extractDocument',
   displayName: 'Extract Document',
   description:
-    'Extract structured data from a transportation document. The piece selects the right extraction workflow for the document type and tags the result with the linked entity context. All processing happens inside the Activepieces sandbox.',
+    'Extract structured data from a transportation document. Rate limits, circuit-breaker thresholds, and the document endpoint follow the layered policy (platform → connection → step).',
   props: {
     documentType: Property.StaticDropdown<string>({
       displayName: 'Document Type',
@@ -62,8 +64,6 @@ export const extractDocument = createAction({
     }),
     entityType: Property.StaticDropdown<string>({
       displayName: 'Linked Entity Type',
-      description:
-        'The piece tags the extraction result with the linked entity type so downstream steps know what to do with the fields.',
       required: true,
       options: {
         options: [
@@ -90,6 +90,7 @@ export const extractDocument = createAction({
       description: 'PDF, PNG, JPG, or TIFF. Max 25 MB.',
       required: true,
     }),
+    advanced: advancedProp,
   },
   async run(context) {
     const auth = readAuthProps(context.auth);
@@ -102,10 +103,22 @@ export const extractDocument = createAction({
     const etResult = EntityTypeSchema.safeParse(context.propsValue.entityType);
     if (!etResult.success) throw new Error('Invalid Linked Entity Type.');
 
+    const config = await resolveEffectiveConfig({
+      store: context.store,
+      apiUrl: context.server.apiUrl,
+      serverToken: context.server.token,
+      connectionConfig: readConnectionConfigOverrides(context.auth),
+      stepConfig: readStepAdvanced(context.propsValue.advanced),
+    });
+
     const tenantKey = context.project.id;
     const rl = await rateLimiter.checkAndIncrement({
       store: context.store,
       storeKey: `alvys.intelligence.${tenantKey}.rl.extract`,
+      config: {
+        maxRequests: config.rateLimitMaxRequests,
+        windowMs: config.rateLimitWindowSec * 1000,
+      },
     });
     if (!rl.allowed) {
       throw new Error(`Rate limit exceeded. Retry in ${Math.ceil(rl.retryAfterMs / 1000)}s.`);
@@ -115,13 +128,17 @@ export const extractDocument = createAction({
     const breakerCheck = await circuitBreaker.checkAllowed({
       store: context.store,
       storeKey: breakerKey,
+      config: {
+        failureThreshold: config.circuitFailureThreshold,
+        recoveryWindowMs: config.circuitRecoveryWindowSec * 1000,
+      },
     });
     if (!breakerCheck.allowed) {
       throw new Error('Document extraction is temporarily unavailable. Retry shortly.');
     }
 
     const baseUrl =
-      auth.documentBaseUrl?.trim() ||
+      config.documentBaseUrl?.trim() ||
       DEFAULT_BASE_URL_BY_ENV[auth.environment] ||
       DEFAULT_BASE_URL_BY_ENV['production'];
     const workflowId = WORKFLOW_ID_BY_DOCTYPE[dtResult.data];
@@ -151,11 +168,22 @@ export const extractDocument = createAction({
         confidence: result.confidence ?? null,
         fields: result.fields,
         rateLimit: { remaining: rl.remaining, total: rl.total },
+        effectiveConfigSummary: {
+          rateLimitMaxRequests: config.rateLimitMaxRequests,
+          rateLimitWindowSec: config.rateLimitWindowSec,
+          circuitFailureThreshold: config.circuitFailureThreshold,
+          circuitRecoveryWindowSec: config.circuitRecoveryWindowSec,
+          documentTimeoutMs: config.documentTimeoutMs,
+        },
       };
     } catch (err) {
       await circuitBreaker.recordFailure({
         store: context.store,
         storeKey: breakerKey,
+        config: {
+          failureThreshold: config.circuitFailureThreshold,
+          recoveryWindowMs: config.circuitRecoveryWindowSec * 1000,
+        },
       });
       throw err;
     }

@@ -4,18 +4,23 @@ import { AlvysTierSchema, SafeStringSchema } from '../../runtime/zod-schemas';
 import { orchestrator } from '../../runtime/orchestrator';
 import { buildProviderKeyMapForTier, readAuthProps } from '../../runtime/key-mapping';
 import { AlvysTier } from '../../runtime/tier-router';
+import {
+  resolveEffectiveConfig,
+  readConnectionConfigOverrides,
+} from '../../runtime/effective-config';
+import { advancedProp, readStepAdvanced } from '../common/advanced-prop';
 
 export const askAlvysAi = createAction({
   auth: alvysIntelligenceAuth,
   name: 'ask_alvys_ai',
   displayName: 'Ask Alvys AI',
   description:
-    'Run a prompt through Alvys Intelligence with tier-based routing, sliding-window rate limiting, PII redaction, and prompt-injection scanning. All processing happens inside the Activepieces sandbox.',
+    'Run a prompt through Alvys Intelligence with tier-based routing, sliding-window rate limiting, PII redaction, and prompt-injection scanning. Security and thinking settings layer platform default → connection override → per-step override.',
   props: {
     tier: Property.StaticDropdown<string>({
       displayName: 'Tier',
       description:
-        'Pick a capability tier. Alvys Intelligence routes to the best available model under the hood (with fallback). Fast = cheapest, Smart = highest quality, Long Context = large documents.',
+        'Capability tier. Alvys Intelligence routes to the best available model with fallback.',
       required: true,
       defaultValue: 'alvys-balanced',
       options: {
@@ -29,7 +34,8 @@ export const askAlvysAi = createAction({
     }),
     prompt: Property.LongText({
       displayName: 'Prompt',
-      description: 'Your prompt. Sensitive values (credit cards, SSNs, API keys) are redacted before leaving the sandbox.',
+      description:
+        'Your prompt. Sensitive values are redacted per the active safety policy before leaving the sandbox.',
       required: true,
     }),
     systemPrompt: Property.LongText({
@@ -48,6 +54,7 @@ export const askAlvysAi = createAction({
       defaultValue: 100,
       description: 'Higher = more creative, lower = more deterministic.',
     }),
+    advanced: advancedProp,
   },
   async run(context) {
     const auth = readAuthProps(context.auth);
@@ -59,6 +66,14 @@ export const askAlvysAi = createAction({
     if (!promptResult.success) {
       throw new Error('Prompt failed input validation. Remove control characters or shorten input.');
     }
+
+    const config = await resolveEffectiveConfig({
+      store: context.store,
+      apiUrl: context.server.apiUrl,
+      serverToken: context.server.token,
+      connectionConfig: readConnectionConfigOverrides(context.auth),
+      stepConfig: readStepAdvanced(context.propsValue.advanced),
+    });
 
     const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [];
     if (context.propsValue.systemPrompt) {
@@ -80,6 +95,7 @@ export const askAlvysAi = createAction({
         store: context.store,
         tenantKey: context.project.id,
         keys,
+        config,
       },
     });
 
@@ -91,10 +107,20 @@ export const askAlvysAi = createAction({
         outputTokens: result.response.outputTokens,
       },
       safety: {
+        mode: config.safetyMode,
         outboundRedactions: result.safetyFindings.outbound.length,
         promptInjectionsDetected: result.safetyFindings.inbound.length,
+        promptInjectionAction: config.promptInjectionAction,
+        flagged: result.flagged ?? null,
       },
       rateLimit: result.rateLimit,
+      effectiveConfigSummary: {
+        rateLimitMaxRequests: config.rateLimitMaxRequests,
+        rateLimitWindowSec: config.rateLimitWindowSec,
+        circuitFailureThreshold: config.circuitFailureThreshold,
+        circuitRecoveryWindowSec: config.circuitRecoveryWindowSec,
+        thinkingBudgetTokens: config.thinkingBudgetTokens,
+      },
     };
   },
 });

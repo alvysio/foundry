@@ -4,22 +4,19 @@ import { PieceAuth, Property } from '@activepieces/pieces-framework';
  * Alvys Intelligence connection.
  *
  * Holds the model-provider API keys the piece needs to fulfill requests
- * entirely inside the AP sandbox (no Alvys-managed backend service in the
- * critical path). Connection labels stay Alvys-branded; the underlying
- * provider names are never surfaced to flow authors.
+ * entirely inside the AP sandbox. The same connection can power chat,
+ * classification, structured-data extraction, and document extraction.
  *
- * At least one chat key is required for the chat / classify / structured-data
- * actions. The document key is required for Extract Document.
- *
- * Keys are stored encrypted in the AP connection store and only the resolved
- * runtime values are read inside `context.auth.props.*`.
+ * The connection also carries OPTIONAL security + thinking overrides. Any
+ * value left blank falls back to the platform default (configured in
+ * Platform Admin → AI Providers → Alvys Intelligence), then to the built-in
+ * default. Per-step overrides on individual actions further override these.
  */
 export const alvysIntelligenceAuth = PieceAuth.CustomAuth({
   description: `
-Configure Alvys Intelligence credentials. The same connection can power chat,
-classification, structured-data extraction, and document extraction depending
-on which fields are filled. Keys are stored encrypted; the piece never echoes
-them back in flow output.
+Configure Alvys Intelligence credentials and security policy. Keys are stored
+encrypted; the piece never echoes them back in flow output. Leave a policy
+field blank to inherit the platform default.
   `,
   required: true,
   props: {
@@ -62,6 +59,80 @@ them back in flow output.
       displayName: 'Document Intelligence Endpoint (Optional)',
       description:
         'Override the document extraction endpoint. Leave blank to use the Alvys default for the selected environment.',
+      required: false,
+    }),
+    documentTimeoutMs: Property.Number({
+      displayName: 'Document Timeout (ms)',
+      description: 'Override platform default. Range 1000–600000.',
+      required: false,
+    }),
+    rateLimitMaxRequests: Property.Number({
+      displayName: 'Rate Limit — Max Requests per Window',
+      description:
+        'Sliding-window rate limit per project. Overrides platform default if set. Range 1–10000.',
+      required: false,
+    }),
+    rateLimitWindowSec: Property.Number({
+      displayName: 'Rate Limit — Window (seconds)',
+      description: 'Range 1–3600.',
+      required: false,
+    }),
+    circuitFailureThreshold: Property.Number({
+      displayName: 'Circuit Breaker — Failure Threshold',
+      description:
+        'Number of consecutive failures before the breaker opens. Range 1–100.',
+      required: false,
+    }),
+    circuitRecoveryWindowSec: Property.Number({
+      displayName: 'Circuit Breaker — Recovery Window (seconds)',
+      description: 'Range 1–3600.',
+      required: false,
+    }),
+    safetyMode: Property.StaticDropdown<string>({
+      displayName: 'Safety Mode',
+      description:
+        'Strict redacts and applies the prompt-injection action; permissive only redacts; off disables redaction (not recommended).',
+      required: false,
+      options: {
+        options: [
+          { label: 'Inherit platform default', value: '' },
+          { label: 'Strict', value: 'strict' },
+          { label: 'Permissive', value: 'permissive' },
+          { label: 'Off (not recommended)', value: 'off' },
+        ],
+      },
+    }),
+    redactCreditCards: Property.Checkbox({
+      displayName: 'Redact Credit Cards',
+      description: 'Mask Luhn-valid credit-card sequences before they leave the sandbox.',
+      required: false,
+    }),
+    redactSsn: Property.Checkbox({
+      displayName: 'Redact SSN',
+      required: false,
+    }),
+    redactApiKeys: Property.Checkbox({
+      displayName: 'Redact API Keys',
+      required: false,
+    }),
+    promptInjectionAction: Property.StaticDropdown<string>({
+      displayName: 'On Prompt Injection',
+      description:
+        'What to do when an inbound model response contains a prompt-injection signature.',
+      required: false,
+      options: {
+        options: [
+          { label: 'Inherit platform default', value: '' },
+          { label: 'Block — refuse response', value: 'block' },
+          { label: 'Warn — return response + flag', value: 'warn' },
+          { label: 'Ignore', value: 'ignore' },
+        ],
+      },
+    }),
+    thinkingBudgetTokens: Property.Number({
+      displayName: 'Thinking Budget (tokens)',
+      description:
+        'Extended-thinking budget for the Smart tier. 0 disables. Range 0–64000.',
       required: false,
     }),
   },

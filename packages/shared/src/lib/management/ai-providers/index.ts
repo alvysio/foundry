@@ -116,7 +116,20 @@ export const BedrockProviderConfig = z.object({
 })
 export type BedrockProviderConfig = z.infer<typeof BedrockProviderConfig>
 
-export const AlvysIntelligenceProviderConfig = z.object({})
+export const AlvysIntelligenceProviderConfig = z.object({
+    rateLimitMaxRequests: z.number().int().min(1).max(10000).optional(),
+    rateLimitWindowSec: z.number().int().min(1).max(3600).optional(),
+    circuitFailureThreshold: z.number().int().min(1).max(100).optional(),
+    circuitRecoveryWindowSec: z.number().int().min(1).max(3600).optional(),
+    safetyMode: z.enum(['strict', 'permissive', 'off']).optional(),
+    redactCreditCards: z.boolean().optional(),
+    redactSsn: z.boolean().optional(),
+    redactApiKeys: z.boolean().optional(),
+    promptInjectionAction: z.enum(['block', 'warn', 'ignore']).optional(),
+    thinkingBudgetTokens: z.number().int().min(0).max(64000).optional(),
+    documentBaseUrl: z.string().url().optional(),
+    documentTimeoutMs: z.number().int().min(1000).max(600000).optional(),
+})
 export type AlvysIntelligenceProviderConfig = z.infer<typeof AlvysIntelligenceProviderConfig>
 
 export const AIProviderAuthConfig = z.union([
