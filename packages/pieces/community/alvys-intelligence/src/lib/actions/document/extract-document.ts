@@ -1,35 +1,43 @@
-import { createAction, PieceAuth, Property } from '@activepieces/pieces-framework';
-import { AIProviderName } from '@activepieces/shared';
-import { aiProps } from '../../common/props';
+import { createAction, Property } from '@activepieces/pieces-framework';
+import { alvysIntelligenceAuth } from '../../auth';
+import {
+  DocumentTypeSchema,
+  EntityTypeSchema,
+} from '../../runtime/zod-schemas';
+import { readAuthProps } from '../../runtime/key-mapping';
+import { circuitBreaker } from '../../runtime/circuit-breaker';
+import { rateLimiter } from '../../runtime/rate-limiter';
+import { bemExtract } from '../../runtime/providers/bem';
 
-/**
- * Document Extraction — proxy layer.
- *
- * Tracking: https://linear.app/alvys/issue/PLA-138, https://linear.app/alvys/issue/PLA-140
- *
- * Backend route (pending): `POST <provider-base>/documents/extract`
- *
- * For the Alvys Intelligence provider the backend:
- *   1. Resolves the document type → canonical schema (POD, ratecon, BOL, COI, MVR, IFTA, …).
- *   2. Auto-injects the schema PLUS the per-tenant custom references configured
- *      for the associated entity (load, trip, driver, truck, trailer, carrier).
- *   3. Calls bem.ai's extract pipeline with the merged schema.
- *   4. Returns normalized structured output keyed by the canonical field names.
- *
- * Customers never see bem credentials or schema mechanics — they pick the doc
- * type and the entity it attaches to.
- */
+const DEFAULT_BASE_URL_BY_ENV: Record<string, string> = {
+  production: 'https://api.bem.ai/v1',
+  qa: 'https://api.bem.ai/v1',
+};
+
+const WORKFLOW_ID_BY_DOCTYPE: Record<string, string> = {
+  pod: 'alvys-pod-extract-v1',
+  ratecon: 'alvys-ratecon-extract-v1',
+  bol: 'alvys-bol-extract-v1',
+  customer_invoice: 'alvys-customer-invoice-extract-v1',
+  carrier_invoice: 'alvys-carrier-invoice-extract-v1',
+  coi: 'alvys-coi-extract-v1',
+  mvr: 'alvys-mvr-extract-v1',
+  dac: 'alvys-dac-extract-v1',
+  ifta: 'alvys-ifta-extract-v1',
+  lumper_receipt: 'alvys-lumper-extract-v1',
+  scale_ticket: 'alvys-scale-extract-v1',
+  accessorial_receipt: 'alvys-accessorial-extract-v1',
+  edi_204_image: 'alvys-edi204-extract-v1',
+  other: 'alvys-generic-extract-v1',
+};
+
 export const extractDocument = createAction({
-  auth: PieceAuth.None(),
+  auth: alvysIntelligenceAuth,
   name: 'extractDocument',
   displayName: 'Extract Document',
   description:
-    'Extract structured data from a transportation document. The selected AI provider injects the canonical schema for the chosen document type plus any tenant custom references for the linked entity.',
+    'Extract structured data from a transportation document. The piece selects the right extraction workflow for the document type and tags the result with the linked entity context. All processing happens inside the Activepieces sandbox.',
   props: {
-    provider: aiProps({
-      modelType: 'text',
-      allowedProviders: [AIProviderName.ALVYS_INTELLIGENCE],
-    }).provider,
     documentType: Property.StaticDropdown<string>({
       displayName: 'Document Type',
       required: true,
@@ -55,7 +63,7 @@ export const extractDocument = createAction({
     entityType: Property.StaticDropdown<string>({
       displayName: 'Linked Entity Type',
       description:
-        'The provider hydrates the entity record and merges its custom-reference schema into the extraction.',
+        'The piece tags the extraction result with the linked entity type so downstream steps know what to do with the fields.',
       required: true,
       options: {
         options: [
@@ -74,8 +82,7 @@ export const extractDocument = createAction({
     }),
     entityId: Property.ShortText({
       displayName: 'Linked Entity Id',
-      description:
-        'Business id for the linked entity (e.g. load number, driver id). Leave blank when Linked Entity Type = None.',
+      description: 'Business id for the linked entity (e.g. load number, driver id). Optional.',
       required: false,
     }),
     file: Property.File({
@@ -83,23 +90,74 @@ export const extractDocument = createAction({
       description: 'PDF, PNG, JPG, or TIFF. Max 25 MB.',
       required: true,
     }),
-    extraSchema: Property.Json({
-      displayName: 'Extra Fields (Optional)',
-      description:
-        'JSON Schema fragment to append to the canonical schema. Use sparingly — most fields should be modeled as tenant custom references.',
-      required: false,
-    }),
-    attachToEntity: Property.Checkbox({
-      displayName: 'Attach Document to Entity',
-      description:
-        'When checked, the provider also stores the uploaded document on the linked entity (e.g. POD onto the load).',
-      required: false,
-      defaultValue: true,
-    }),
   },
-  async run() {
-    throw new Error(
-      'Not yet implemented (PLA-138). Awaiting document extraction proxy rollout: POST <provider-base>/documents/extract. Track progress at https://linear.app/alvys/issue/PLA-138.',
-    );
+  async run(context) {
+    const auth = readAuthProps(context.auth);
+    if (!auth.documentKey) {
+      throw new Error('Document Intelligence Key is not configured on the Alvys Intelligence connection.');
+    }
+
+    const dtResult = DocumentTypeSchema.safeParse(context.propsValue.documentType);
+    if (!dtResult.success) throw new Error('Invalid Document Type.');
+    const etResult = EntityTypeSchema.safeParse(context.propsValue.entityType);
+    if (!etResult.success) throw new Error('Invalid Linked Entity Type.');
+
+    const tenantKey = context.project.id;
+    const rl = await rateLimiter.checkAndIncrement({
+      store: context.store,
+      storeKey: `alvys.intelligence.${tenantKey}.rl.extract`,
+    });
+    if (!rl.allowed) {
+      throw new Error(`Rate limit exceeded. Retry in ${Math.ceil(rl.retryAfterMs / 1000)}s.`);
+    }
+
+    const breakerKey = `alvys.intelligence.${tenantKey}.cb.document`;
+    const breakerCheck = await circuitBreaker.checkAllowed({
+      store: context.store,
+      storeKey: breakerKey,
+    });
+    if (!breakerCheck.allowed) {
+      throw new Error('Document extraction is temporarily unavailable. Retry shortly.');
+    }
+
+    const baseUrl =
+      auth.documentBaseUrl?.trim() ||
+      DEFAULT_BASE_URL_BY_ENV[auth.environment] ||
+      DEFAULT_BASE_URL_BY_ENV['production'];
+    const workflowId = WORKFLOW_ID_BY_DOCTYPE[dtResult.data];
+    if (!workflowId) {
+      throw new Error('No extraction workflow is configured for the selected document type.');
+    }
+
+    const file = context.propsValue.file;
+    try {
+      const result = await bemExtract({
+        apiKey: auth.documentKey,
+        baseUrl,
+        workflowId,
+        fileBase64: file.base64,
+        fileName: file.filename,
+        mimeType: 'application/octet-stream',
+      });
+      await circuitBreaker.recordSuccess({
+        store: context.store,
+        storeKey: breakerKey,
+      });
+      return {
+        documentType: dtResult.data,
+        entityType: etResult.data,
+        entityId: context.propsValue.entityId ?? null,
+        status: result.status,
+        confidence: result.confidence ?? null,
+        fields: result.fields,
+        rateLimit: { remaining: rl.remaining, total: rl.total },
+      };
+    } catch (err) {
+      await circuitBreaker.recordFailure({
+        store: context.store,
+        storeKey: breakerKey,
+      });
+      throw err;
+    }
   },
 });
