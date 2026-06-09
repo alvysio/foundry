@@ -1,7 +1,7 @@
 import { BaseModelSchema, Platform } from '@activepieces/shared'
 import { EntitySchema } from 'typeorm'
 import { z } from 'zod'
-import { ApIdSchema, BaseColumnSchemaPart } from '../../database/database-common'
+import { BaseColumnSchemaPart } from '../../database/database-common'
 
 const OdinTierName = z.enum(['fast', 'balanced', 'powerful'])
 
@@ -20,7 +20,7 @@ export const OdinTierConfigEntity = new EntitySchema<OdinTierConfigSchemaType>({
     columns: {
         ...BaseColumnSchemaPart,
         platformId: {
-            ...ApIdSchema,
+            type: String,
             nullable: false,
         },
         tier: {
