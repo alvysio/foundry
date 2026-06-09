@@ -61,15 +61,16 @@ type AlvysStore = {
   put: <T>(key: string, value: T) => Promise<T>;
 };
 
-async function resolveAlvysToken({ auth, store }: {
+async function resolveAlvysToken({ auth, store, forceRefresh }: {
   auth: AlvysAuthValue;
   store?: AlvysStore;
+  forceRefresh?: boolean;
 }): Promise<string> {
   const env = auth.environment;
   const cfg = ENV_CONFIG[env];
   if (!cfg) throw new Error(`Unknown Alvys environment: ${env}`);
 
-  if (store) {
+  if (store && !forceRefresh) {
     const cached = await store.get<CachedToken>(cacheKey(env, auth.clientId));
     if (cached && cached.exp - Math.floor(Date.now() / 1000) > REFRESH_BUFFER_SECONDS) {
       return cached.token;

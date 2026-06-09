@@ -14,7 +14,7 @@
 import { anthropicChat } from './anthropic';
 import { openaiChat } from './openai';
 import { geminiChat } from './gemini';
-import { bemExtract } from './bem';
+import { documentIntelExtract } from './document-intel';
 import { VendorProvider } from '../tier-router';
 
 export type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
@@ -36,7 +36,7 @@ export type ProviderKeyMap = {
   anthropic?: string;
   openai?: string;
   gemini?: string;
-  bem?: string;
+  'document-intel'?: string;
 };
 
 export async function callChatProvider(params: {
@@ -57,11 +57,11 @@ export async function callChatProvider(params: {
       if (!params.keys.gemini) throw new Error('Gemini API key is not configured.');
       return geminiChat({ ...params.request, apiKey: params.keys.gemini });
     }
-    case 'bem': {
-      throw new Error('Bem is for document extraction only — use callDocumentProvider.');
+    case 'document-intel': {
+      throw new Error('Document Intelligence is for document extraction only — use the Extract Document action.');
     }
   }
 }
 
-export { bemExtract };
-export type { BemExtractRequest, BemExtractResponse } from './bem';
+export { documentIntelExtract };
+export type { DocumentExtractRequestInternal, DocumentExtractResponseInternal } from './document-intel';

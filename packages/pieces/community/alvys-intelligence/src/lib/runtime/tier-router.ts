@@ -13,7 +13,7 @@
 
 export type AlvysTier = 'alvys-fast' | 'alvys-balanced' | 'alvys-smart' | 'alvys-long-context';
 
-export type VendorProvider = 'anthropic' | 'openai' | 'gemini' | 'bem';
+export type VendorProvider = 'anthropic' | 'openai' | 'gemini' | 'document-intel';
 
 export type RouteCandidate = {
   provider: VendorProvider;
@@ -63,6 +63,6 @@ export const tierRouter = {
   },
 
   routeDocumentExtraction(): RouteCandidate {
-    return { provider: 'bem', modelId: 'document-extract-v1' };
+    return { provider: 'document-intel', modelId: 'document-extract-v1' };
   },
 };

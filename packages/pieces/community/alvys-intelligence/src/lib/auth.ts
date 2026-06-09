@@ -14,11 +14,31 @@ import { PieceAuth, Property } from '@activepieces/pieces-framework';
  */
 export const alvysIntelligenceAuth = PieceAuth.CustomAuth({
   description: `
-Configure Alvys Intelligence credentials and security policy. Keys are stored
+Alvys Intelligence credentials and security policy. In most embedded
+deployments this connection is **auto-provisioned for your project by your
+administrator** — you should not need to fill it in. Keys are stored
 encrypted; the piece never echoes them back in flow output. Leave a policy
 field blank to inherit the platform default.
   `,
   required: true,
+  validate: async ({ auth }) => {
+    const v = (auth ?? {}) as Record<string, unknown>;
+    const props = (v['props'] ?? v) as Record<string, unknown>;
+    const environment = String(props['environment'] ?? '');
+    const documentKey = String(props['documentKey'] ?? '');
+    const chatPrimaryKey = String(props['chatPrimaryKey'] ?? '');
+    if (!environment) {
+      return { valid: false, error: 'Environment is required.' };
+    }
+    if (!documentKey && !chatPrimaryKey) {
+      return {
+        valid: false,
+        error:
+          'Provide at least one credential: a Chat Primary Key (for Ask Alvys AI) or a Document Intelligence Key (for Classify / Route / Extract Document).',
+      };
+    }
+    return { valid: true };
+  },
   props: {
     environment: Property.StaticDropdown({
       displayName: 'Environment',

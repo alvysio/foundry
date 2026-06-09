@@ -1,8 +1,10 @@
 import {
+  HttpError,
   HttpMethod,
   QueryParams,
   httpClient,
   HttpMessageBody,
+  HttpResponse,
 } from '@activepieces/pieces-common';
 
 import { alvysTokenService, AlvysStore } from './token-service';
@@ -38,21 +40,47 @@ export async function alvysRequest<T = unknown>({
   headers?: Record<string, string>;
 }): Promise<T> {
   const normalized = normalizeAuth(auth);
-  const token = await alvysTokenService.resolveAlvysToken({ auth: normalized, store });
   const { apiBase } = alvysTokenService.getEnvConfig(normalized.environment);
+  const url = `${apiBase}${path}`;
 
-  const response = await httpClient.sendRequest<T>({
-    method,
-    url: `${apiBase}${path}`,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      ...(headers ?? {}),
-    },
-    queryParams,
-    body: body as HttpMessageBody | undefined,
-  });
-  return response.body;
+  const send = async (forceRefresh: boolean): Promise<HttpResponse<T>> => {
+    const token = await alvysTokenService.resolveAlvysToken({
+      auth: normalized,
+      store,
+      forceRefresh,
+    });
+    return httpClient.sendRequest<T>({
+      method,
+      url,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(headers ?? {}),
+      },
+      queryParams,
+      body: body as HttpMessageBody | undefined,
+    });
+  };
+
+  try {
+    const response = await send(false);
+    return response.body;
+  } catch (err) {
+    if (isUnauthorized(err)) {
+      const response = await send(true);
+      return response.body;
+    }
+    throw err;
+  }
+}
+
+function isUnauthorized(err: unknown): boolean {
+  if (err instanceof HttpError) {
+    const status = err.response?.status;
+    return status === 401 || status === 403;
+  }
+  const status = (err as { response?: { status?: number } } | null)?.response?.status;
+  return status === 401 || status === 403;
 }
 
 export function buildPath({

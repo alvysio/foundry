@@ -6,12 +6,16 @@ import { AlvysAuthValue } from './common/types';
 
 export const alvysAuth = PieceAuth.CustomAuth({
   description: `
-Sign in to Alvys and create an OAuth2 client.
+Alvys API credentials. In most embedded deployments this connection is
+**auto-provisioned for your project by your administrator** — you should not
+need to fill it in. If you do, follow these steps:
 
-1. Go to **Settings → Integrations → API**.
+1. Go to **Settings → Integrations → API** in Alvys.
 2. Create a new **Public API Client** (or reuse an existing one).
 3. Copy the **Client ID** and **Client Secret**.
-4. Paste them here. Alvys exchanges them for short-lived bearer tokens automatically (Alvys-managed OAuth2 client_credentials flow per https://docs.alvys.com/docs/authentication-1).
+4. Paste them here. Tokens are exchanged for short-lived bearers automatically
+   and refreshed in-flight on 401/403 (OAuth2 client_credentials grant per
+   https://docs.alvys.com/docs/authentication-1).
   `,
   required: true,
   props: {

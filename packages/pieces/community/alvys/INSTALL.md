@@ -10,7 +10,7 @@ This Activepieces fork (`alvysio/foundry`) ships five Alvys-branded custom piece
 | Alvys Dispatch | `@activepieces/piece-alvys-dispatch` | 2 (stubs) | 0 | needs Tier 2 backend |
 | Alvys Billing | `@activepieces/piece-alvys-billing` | 3 (stubs) | 0 | needs Tier 2/3 backend |
 | Alvys AI | `@activepieces/piece-alvys-ai` | 2 (stubs) | 0 | needs AI broker |
-| Alvys Document Intelligence | `@activepieces/piece-alvys-documents` | 2 (stubs) | 0 | needs bem.ai proxy |
+| Alvys Intelligence | `@activepieces/piece-alvys-intelligence` | classify / route / extract / ask | 0 | self-contained piece runtime |
 
 Action paths shipped against the Alvys Public API (`https://api.alvys.com`). Two new Tier 1 routes (`/Loads/{n}/rate-confirmation`, `/Maintenance`) land in alvysio/backend PRs #34185 (qa) and #34187 (prod, draft).
 
@@ -94,9 +94,9 @@ Restart the API. The same `Watching for changes` log lines should appear.
 |---|---|---|
 | Alvys, Alvys Dispatch, Alvys Billing | Alvys Public API | A Public API token (see above) |
 | Alvys AI | Cloudflare AI Gateway + Odin broker | A Cloudflare AI Gateway provider in `/v1/ai-providers`; Odin (`/v1/odin/*`) ships in a separate PR (Odin module) |
-| Alvys Document Intelligence | bem.ai (proxied by Alvys backend) | bem.ai endpoints are exposed via `/api/p/v1.0/Documents/*` once the bem proxy lands in backend |
+| Alvys Intelligence | Alvys Intelligence document endpoint | Document Intelligence Key + Endpoint configured on the connection; the piece talks to it directly from the sandbox |
 
-The token broker design means **customers never see Anthropic / OpenAI / bem.ai keys**. Everything goes through Alvys.
+The token broker design means **customers never see upstream provider keys**. All vendor identity is confined to the piece runtime.
 
 ## 5. Webhook triggers
 
@@ -123,7 +123,7 @@ packages/pieces/community/
 ├── alvys-ai/                    # token-broker AI (stub)
 ├── alvys-billing/               # AR/AP, settlements, EDI 210 (stub)
 ├── alvys-dispatch/              # assign carrier, status, check-call (stub)
-└── alvys-documents/             # bem.ai-backed extract (stub)
+└── alvys-intelligence/         # classify / route / extract / ask — self-contained
 ```
 
 Each piece exposes its auth from `src/index.ts`. The HTTP client wrapper sits in `src/lib/common/client.ts`. Per CLAUDE.md, the brand logo is inlined as a base64 data URI on every piece so the icon renders without any external CDN dependency.

@@ -1,8 +1,8 @@
 /**
  * Document-extraction provider — direct upstream call.
  *
- * Internal-only. The upstream vendor identity is confined to this file; the
- * action layer must only consume `BemExtractResponse` shape, which is mapped
+ * Internal-only. The upstream provider identity is confined to this file; the
+ * action layer must only consume `DocumentExtractResponseInternal` shape, which is mapped
  * to Alvys-shaped output before the AP flow ever sees it.
  *
  * Auth: bearer header. Endpoint configurable via the connection's
@@ -11,7 +11,7 @@
 
 import { httpClient, HttpMethod } from '@activepieces/pieces-common';
 
-export type BemExtractRequest = {
+export type DocumentExtractRequestInternal = {
   apiKey: string;
   baseUrl: string;
   workflowId: string;
@@ -20,14 +20,14 @@ export type BemExtractRequest = {
   mimeType: string;
 };
 
-export type BemExtractResponse = {
+export type DocumentExtractResponseInternal = {
   transformationId: string;
   status: 'completed' | 'pending' | 'failed';
   fields: Record<string, unknown>;
   confidence?: number;
 };
 
-export async function bemExtract(req: BemExtractRequest): Promise<BemExtractResponse> {
+export async function documentIntelExtract(req: DocumentExtractRequestInternal): Promise<DocumentExtractResponseInternal> {
   const response = await httpClient.sendRequest<{
     transformationID: string;
     status: string;
