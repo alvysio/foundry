@@ -10,6 +10,14 @@ process.env.AP_BASE_CODE_DIRECTORY = 'packages/server/engine/test/resources/code
 process.env.AP_TEST_MODE = 'true'
 process.env.AP_DEV_PIECES = 'http,data-mapper,approval,webhook,delay'
 
+// Test-only: allow fetches against external CDNs (cdn.activepieces.com) even
+// when run behind a TLS-intercepting proxy. Bun bypasses the system cert store
+// by default; Node (used when turbo spawns the test runner) does not, which
+// otherwise breaks the file-property tests that resolve real URLs.
+if (!process.env.NODE_TLS_REJECT_UNAUTHORIZED) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+}
+
 export default defineConfig({
   test: {
     globals: true,
