@@ -3,42 +3,30 @@ import { PieceAuth, Property } from '@activepieces/pieces-framework';
 /**
  * Alvys Intelligence connection.
  *
- * Holds the model-provider API keys the piece needs to fulfill requests
- * entirely inside the AP sandbox. The same connection can power chat,
- * classification, structured-data extraction, and document extraction.
+ * Holds document-pipeline credentials + safety / circuit-breaker policy that
+ * applies to every action in the piece. Chat actions (Ask Alvys AI, Summarize,
+ * Classify, Extract Structured Data) do not need keys here — they consume the
+ * platform-configured **Alvys Intelligence** AI Provider via the standard AP
+ * provider dropdown.
  *
- * The connection also carries OPTIONAL security + thinking overrides. Any
- * value left blank falls back to the platform default (configured in
- * Platform Admin → AI Providers → Alvys Intelligence), then to the built-in
- * default. Per-step overrides on individual actions further override these.
+ * Every policy field is optional. Blank → inherit platform default → inherit
+ * built-in default. Per-step `Advanced` overrides win over connection values.
  */
 export const alvysIntelligenceAuth = PieceAuth.CustomAuth({
   description: `
-Alvys Intelligence credentials and security policy. In most embedded
+Alvys Intelligence credentials and safety policy. In most embedded
 deployments this connection is **auto-provisioned for your project by your
-administrator** — you should not need to fill it in. Keys are stored
-encrypted; the piece never echoes them back in flow output. Leave a policy
-field blank to inherit the platform default.
+administrator** — you should not need to fill it in.
+
+- **Document Intelligence Key / Endpoint** are required only if you use
+  the Classify / Route / Extract Document actions.
+- **Safety + rate-limit + circuit-breaker fields** apply to all actions,
+  including the AI chat actions which otherwise use the platform-configured
+  Alvys Intelligence AI Provider.
+
+Leave a field blank to inherit the platform default.
   `,
   required: true,
-  validate: async ({ auth }) => {
-    const v = (auth ?? {}) as Record<string, unknown>;
-    const props = (v['props'] ?? v) as Record<string, unknown>;
-    const environment = String(props['environment'] ?? '');
-    const documentKey = String(props['documentKey'] ?? '');
-    const chatPrimaryKey = String(props['chatPrimaryKey'] ?? '');
-    if (!environment) {
-      return { valid: false, error: 'Environment is required.' };
-    }
-    if (!documentKey && !chatPrimaryKey) {
-      return {
-        valid: false,
-        error:
-          'Provide at least one credential: a Chat Primary Key (for Ask Alvys AI) or a Document Intelligence Key (for Classify / Route / Extract Document).',
-      };
-    }
-    return { valid: true };
-  },
   props: {
     environment: Property.StaticDropdown({
       displayName: 'Environment',
@@ -52,27 +40,10 @@ field blank to inherit the platform default.
         ],
       },
     }),
-    chatPrimaryKey: PieceAuth.SecretText({
-      displayName: 'Chat Primary Key',
-      description:
-        'Primary model API key used for chat / classify / structured-data actions.',
-      required: false,
-    }),
-    chatSecondaryKey: PieceAuth.SecretText({
-      displayName: 'Chat Secondary Key',
-      description:
-        'Secondary model API key used for tier fallback when the primary provider rate-limits or errors.',
-      required: false,
-    }),
-    chatTertiaryKey: PieceAuth.SecretText({
-      displayName: 'Chat Tertiary Key',
-      description: 'Tertiary fallback model API key.',
-      required: false,
-    }),
     documentKey: PieceAuth.SecretText({
       displayName: 'Document Intelligence Key',
       description:
-        'API key for the document extraction provider. Required for Extract Document.',
+        'API key for the document extraction provider. Required for Classify / Route / Extract Document actions.',
       required: false,
     }),
     documentBaseUrl: Property.ShortText({
@@ -149,11 +120,14 @@ field blank to inherit the platform default.
         ],
       },
     }),
-    thinkingBudgetTokens: Property.Number({
-      displayName: 'Thinking Budget (tokens)',
-      description:
-        'Extended-thinking budget for the Smart tier. 0 disables. Range 0–64000.',
-      required: false,
-    }),
+  },
+  validate: async ({ auth }) => {
+    const v = (auth ?? {}) as Record<string, unknown>;
+    const props = (v['props'] ?? v) as Record<string, unknown>;
+    const environment = String(props['environment'] ?? '');
+    if (!environment) {
+      return { valid: false, error: 'Environment is required.' };
+    }
+    return { valid: true };
   },
 });
