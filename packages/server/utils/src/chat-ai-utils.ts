@@ -80,15 +80,6 @@ function createChatModel({ provider, auth, config, modelId }: {
             const { apiKey } = auth as BaseAIProviderAuthConfig
             return createOpenRouter({ apiKey }).chat(modelId) as LanguageModel
         }
-        case AIProviderName.ALVYS_INTELLIGENCE: {
-            const { apiKey } = auth as BaseAIProviderAuthConfig
-            const baseUrl = process.env['ODIN_INTERNAL_BASE_URL'] ?? 'http://127.0.0.1:3000'
-            return createOpenAICompatible({
-                name: 'alvys-intelligence',
-                baseURL: `${baseUrl}/v1/odin`,
-                headers: { Authorization: `Bearer ${apiKey}` },
-            }).chatModel(modelId)
-        }
         default: {
             const exhaustiveCheck: never = provider
             throw new Error(`Unsupported chat provider: ${exhaustiveCheck}`)

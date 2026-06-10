@@ -1,7 +1,8 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
+import { AIProviderName } from '@activepieces/shared';
 
 import { alvysIntelligenceAuth } from '../../auth';
-import { alvysModelProp } from '../../common/props';
+import { alvysAiProps } from '../../common/props';
 import { safeGenerate } from '../../common/safe-text';
 import { advancedProp } from '../common/advanced-prop';
 
@@ -11,11 +12,9 @@ export const summarizeText = createAction({
   displayName: 'Summarize Text',
   description: 'Summarize long emails, articles, or documents into what matters.',
   props: {
-    model: alvysModelProp,
-    text: Property.LongText({
-      displayName: 'Text',
-      required: true,
-    }),
+    provider: alvysAiProps.provider,
+    model: alvysAiProps.model,
+    text: Property.LongText({ displayName: 'Text', required: true }),
     instruction: Property.ShortText({
       displayName: 'Instruction',
       required: true,
@@ -30,8 +29,9 @@ export const summarizeText = createAction({
     advanced: advancedProp,
   },
   async run(context) {
-    const result = await safeGenerate({
+    return safeGenerate({
       context,
+      provider: context.propsValue.provider as AIProviderName,
       modelId: context.propsValue.model,
       messages: [
         {
@@ -42,6 +42,5 @@ export const summarizeText = createAction({
       maxOutputTokens: context.propsValue.maxOutputTokens ?? 2000,
       bucketKey: 'summarize',
     });
-    return result;
   },
 });

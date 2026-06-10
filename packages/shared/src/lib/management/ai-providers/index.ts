@@ -12,7 +12,6 @@ export enum AIProviderName {
     CUSTOM = 'custom',
     BEDROCK = 'bedrock',
     MISTRAL = 'mistral',
-    ALVYS_INTELLIGENCE = 'alvys-intelligence',
 }
 
 
@@ -60,9 +59,6 @@ export type BedrockProviderAuthConfig = z.infer<typeof BedrockProviderAuthConfig
 
 export const MistralProviderAuthConfig = BaseAIProviderAuthConfig
 export type MistralProviderAuthConfig = z.infer<typeof MistralProviderAuthConfig>
-
-export const AlvysIntelligenceProviderAuthConfig = BaseAIProviderAuthConfig
-export type AlvysIntelligenceProviderAuthConfig = z.infer<typeof AlvysIntelligenceProviderAuthConfig>
 
 export const AnthropicProviderConfig = z.object({})
 export type AnthropicProviderConfig = z.infer<typeof AnthropicProviderConfig>
@@ -123,22 +119,6 @@ export type BedrockProviderConfig = z.infer<typeof BedrockProviderConfig>
 export const MistralProviderConfig = z.object({})
 export type MistralProviderConfig = z.infer<typeof MistralProviderConfig>
 
-export const AlvysIntelligenceProviderConfig = z.object({
-    rateLimitMaxRequests: z.number().int().min(1).max(10000).optional(),
-    rateLimitWindowSec: z.number().int().min(1).max(3600).optional(),
-    circuitFailureThreshold: z.number().int().min(1).max(100).optional(),
-    circuitRecoveryWindowSec: z.number().int().min(1).max(3600).optional(),
-    safetyMode: z.enum(['strict', 'permissive', 'off']).optional(),
-    redactCreditCards: z.boolean().optional(),
-    redactSsn: z.boolean().optional(),
-    redactApiKeys: z.boolean().optional(),
-    promptInjectionAction: z.enum(['block', 'warn', 'ignore']).optional(),
-    thinkingBudgetTokens: z.number().int().min(0).max(64000).optional(),
-    documentBaseUrl: z.string().url().optional(),
-    documentTimeoutMs: z.number().int().min(1000).max(600000).optional(),
-})
-export type AlvysIntelligenceProviderConfig = z.infer<typeof AlvysIntelligenceProviderConfig>
-
 export const AIProviderAuthConfig = z.union([
     AnthropicProviderAuthConfig,
     AzureProviderAuthConfig,
@@ -150,7 +130,6 @@ export const AIProviderAuthConfig = z.union([
     ActivePiecesProviderAuthConfig,
     BedrockProviderAuthConfig,
     MistralProviderAuthConfig,
-    AlvysIntelligenceProviderAuthConfig,
 ])
 export type AIProviderAuthConfig = z.infer<typeof AIProviderAuthConfig>
 // Order matters, put schemas with required fields first, empty ones last. This is to avoid empty objects matching any object.
@@ -165,7 +144,6 @@ export const AIProviderConfig = z.union([
     OpenRouterProviderConfig,
     ActivePiecesProviderConfig,
     MistralProviderConfig,
-    AlvysIntelligenceProviderConfig,
 ])
 export type AIProviderConfig = z.infer<typeof AIProviderConfig>
 
@@ -229,12 +207,6 @@ const ProviderConfigUnion = z.discriminatedUnion('provider', [
         provider: z.literal(AIProviderName.MISTRAL),
         config: MistralProviderConfig,
         auth: MistralProviderAuthConfig,
-    }),
-    z.object({
-        displayName: z.string().min(1),
-        provider: z.literal(AIProviderName.ALVYS_INTELLIGENCE),
-        config: AlvysIntelligenceProviderConfig,
-        auth: AlvysIntelligenceProviderAuthConfig,
     }),
 ])
 
@@ -310,7 +282,6 @@ const ANTHROPIC_OPENROUTER_CHAT_MODELS = ['claude-sonnet-4.6', 'claude-opus-4.7'
 const GOOGLE_CHAT_MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-3.1-pro-preview', 'gemini-3-flash-preview'] as const
 const X_AI_OPENROUTER_CHAT_MODELS = ['grok-4.20', 'grok-4.1-fast'] as const
 
-export const ALVYS_INTELLIGENCE_TIERS = ['alvys-fast', 'alvys-balanced', 'alvys-smart', 'alvys-long-context'] as const
 
 export const ALLOWED_CHAT_MODELS_BY_PROVIDER: Partial<Record<AIProviderName, readonly string[]>> = {
     [AIProviderName.OPENAI]: OPENAI_CHAT_MODELS,
@@ -322,7 +293,6 @@ export const ALLOWED_CHAT_MODELS_BY_PROVIDER: Partial<Record<AIProviderName, rea
         ...GOOGLE_CHAT_MODELS.map((m) => `${AIProviderName.GOOGLE}/${m}`),
         ...X_AI_OPENROUTER_CHAT_MODELS.map((m) => `x-ai/${m}`),
     ],
-    [AIProviderName.ALVYS_INTELLIGENCE]: ALVYS_INTELLIGENCE_TIERS,
 }
 
 export function getEffectiveProviderAndModel({
@@ -418,7 +388,6 @@ const PROVIDER_MAX_CONTEXT_TOKENS: Partial<Record<AIProviderName, number>> = {
     [AIProviderName.OPENROUTER]: 128_000,
     [AIProviderName.ACTIVEPIECES]: 200_000,
     [AIProviderName.MISTRAL]: 128_000,
-    [AIProviderName.ALVYS_INTELLIGENCE]: 1_048_576,
 }
 
 function getMaxContextTokens({ provider }: { provider: AIProviderName | undefined }): number {

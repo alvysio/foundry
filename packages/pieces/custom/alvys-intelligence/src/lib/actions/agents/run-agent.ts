@@ -26,8 +26,7 @@ import {
   createEmbeddingModel,
 } from '@activepieces/piece-ai';
 
-import { alvysModelProp } from '../../common/props';
-import { resolveWebSearchProvider } from '../../common/web-search-provider';
+import { alvysAiProps } from '../../common/props';
 import { rateLimiter } from '../../runtime/rate-limiter';
 import { circuitBreaker } from '../../runtime/circuit-breaker';
 import { safety } from '../../runtime/safety';
@@ -56,7 +55,8 @@ export const runAgent = createAction({
   description:
     'Multi-step reasoning loop powered by Alvys Intelligence. Wraps the upstream AI agent with rate limiting, circuit-breaker resilience, and inbound prompt-injection scanning on the final transcript. Safety + rate-limit policy resolved from platform defaults plus the per-step Advanced overrides — no per-connection override here.',
   props: {
-    model: alvysModelProp,
+    provider: alvysAiProps.provider,
+    model: alvysAiProps.model,
     [AgentPieceProps.PROMPT]: Property.LongText({
       displayName: 'Prompt',
       description: 'Describe what you want the assistant to do.',
@@ -90,10 +90,10 @@ export const runAgent = createAction({
     }),
     [AgentPieceProps.WEB_SEARCH_OPTIONS]: buildWebSearchOptionsProperty(
       (propsValue) => ({
-        provider: resolveWebSearchProvider(propsValue['model'] as string | undefined),
-        model: undefined,
+        provider: propsValue['provider'] as string | undefined,
+        model: propsValue['model'] as string | undefined,
       }),
-      ['webSearch', 'model'],
+      ['webSearch', 'provider', 'model'],
       { showIncludeSources: false },
     ),
     advanced: advancedProp,
@@ -101,7 +101,11 @@ export const runAgent = createAction({
   async run(context) {
     const modelId = context.propsValue.model;
     if (!modelId) {
-      throw new Error('Alvys Intelligence model is required.');
+      throw new Error('Model is required.');
+    }
+    const provider = context.propsValue.provider as AIProviderName;
+    if (!provider) {
+      throw new Error('AI Provider is required.');
     }
 
     const config = await resolveEffectiveConfig({
@@ -144,8 +148,8 @@ export const runAgent = createAction({
     const webSearchOptions = (context.propsValue.webSearchOptions ?? {}) as Record<string, unknown>;
 
     const { tools: webSearchTools, providerOptions } = buildWebSearchConfig({
-      provider: resolveWebSearchProvider(modelId),
-      model: undefined,
+      provider,
+      model: modelId,
       webSearchEnabled,
       webSearchOptions: webSearchOptions as never,
     });
@@ -154,7 +158,7 @@ export const runAgent = createAction({
     try {
       model = await createAIModel({
         modelId,
-        provider: AIProviderName.ALVYS_INTELLIGENCE,
+        provider,
         engineToken: context.server.token,
         apiUrl: context.server.apiUrl,
         projectId: context.project.id,
@@ -196,7 +200,7 @@ export const runAgent = createAction({
     if (kbFileTools.length > 0) {
       try {
         const result = await createEmbeddingModel({
-          provider: AIProviderName.ALVYS_INTELLIGENCE,
+          provider,
           engineToken: context.server.token,
           apiUrl: context.server.apiUrl,
         });

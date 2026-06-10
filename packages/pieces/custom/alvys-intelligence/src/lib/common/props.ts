@@ -1,23 +1,10 @@
-import { Property } from '@activepieces/pieces-framework';
+import { aiProps } from '@activepieces/piece-ai';
 
 /**
- * Tier-style model selector for Alvys Intelligence text actions. Mirrors the
- * `ALVYS_INTELLIGENCE_TIERS` defined in `@activepieces/shared`. Single dropdown
- * — no provider picker because every Alvys text action is pinned to the
- * platform-configured Alvys Intelligence AI Provider.
+ * Provider + model dropdowns for Alvys Intelligence chat actions. Backed by
+ * the platform-configured AI Providers in Platform Admin → AI Providers. No
+ * own credential surface — the underlying provider (Anthropic, OpenAI,
+ * Google, etc.) is selected per-step by the flow author and credentials come
+ * from the platform's configured provider.
  */
-export const alvysModelProp = Property.StaticDropdown<string>({
-  displayName: 'Model',
-  description:
-    'Capability tier. Alvys Intelligence routes to the best available underlying model.',
-  required: true,
-  defaultValue: 'alvys-balanced',
-  options: {
-    options: [
-      { label: 'Fast', value: 'alvys-fast' },
-      { label: 'Balanced (default)', value: 'alvys-balanced' },
-      { label: 'Smart', value: 'alvys-smart' },
-      { label: 'Long Context (1M tokens)', value: 'alvys-long-context' },
-    ],
-  },
-});
+export const alvysAiProps = aiProps({ modelType: 'text' });

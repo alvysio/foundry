@@ -1,6 +1,5 @@
 import { AIProviderAuthConfig, AIProviderConfig, AIProviderName } from '@activepieces/shared'
 import { AIProviderStrategy } from './ai-provider'
-import { alvysIntelligenceProvider } from './alvys-intelligence-provider'
 import { anthropicProvider } from './anthropic-provider'
 import { azureProvider } from './azure-provider'
 import { bedrockProvider } from './bedrock-provider'
@@ -28,7 +27,6 @@ export const aiProviders: Record<AIProviderName, AIProviderStrategy<AIProviderAu
             // Activepieces provider is managed internally, no external validation needed
         },
     },
-    [AIProviderName.ALVYS_INTELLIGENCE]: alvysIntelligenceProvider,
 }
 
 export { AIProviderStrategy } from './ai-provider'

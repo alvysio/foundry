@@ -1,7 +1,8 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
+import { AIProviderName } from '@activepieces/shared';
 
 import { alvysIntelligenceAuth } from '../../auth';
-import { alvysModelProp } from '../../common/props';
+import { alvysAiProps } from '../../common/props';
 import { safeGenerate } from '../../common/safe-text';
 import { advancedProp } from '../common/advanced-prop';
 
@@ -12,7 +13,8 @@ export const classifyText = createAction({
   description:
     'Categorize any text input using custom labels, so your flow knows what to do next.',
   props: {
-    model: alvysModelProp,
+    provider: alvysAiProps.provider,
+    model: alvysAiProps.model,
     text: Property.LongText({
       displayName: 'Text to Classify',
       required: true,
@@ -29,6 +31,7 @@ export const classifyText = createAction({
 
     const result = await safeGenerate({
       context,
+      provider: context.propsValue.provider as AIProviderName,
       modelId: context.propsValue.model,
       messages: [
         {

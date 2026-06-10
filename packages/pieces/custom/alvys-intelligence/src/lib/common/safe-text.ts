@@ -28,6 +28,7 @@ export type SafeGenerateParams = {
     flows: { current: { id: string } };
     run: { id: string };
   };
+  provider: AIProviderName;
   modelId: string | undefined;
   messages: ModelMessage[];
   maxOutputTokens?: number;
@@ -121,7 +122,7 @@ export async function safeGenerate(params: SafeGenerateParams): Promise<SafeGene
 
   try {
     const model = await createAIModel({
-      provider: AIProviderName.ALVYS_INTELLIGENCE,
+      provider: params.provider,
       modelId,
       engineToken: context.server.token,
       apiUrl: context.server.apiUrl,
