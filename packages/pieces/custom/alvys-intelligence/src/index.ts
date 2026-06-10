@@ -7,7 +7,7 @@ import { routeDocument } from './lib/actions/document/route-document';
 import { askAlvysAi } from './lib/actions/chat/ask-alvys-ai';
 import { summarizeText } from './lib/actions/text/summarize-text';
 import { classifyText } from './lib/actions/utility/classify-text';
-import { extractStructuredData } from './lib/actions/utility/extract-structured-data';
+import { runAgent } from './lib/actions/agents/run-agent';
 
 export const alvysIntelligence = createPiece({
   displayName: 'Alvys Intelligence',
@@ -23,7 +23,7 @@ export const alvysIntelligence = createPiece({
     askAlvysAi,
     summarizeText,
     classifyText,
-    extractStructuredData,
+    runAgent,
     classifyDocument,
     routeDocument,
     extractDocument,

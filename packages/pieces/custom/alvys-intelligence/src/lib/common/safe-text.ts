@@ -1,4 +1,5 @@
-import { ModelMessage, generateText } from 'ai';
+import { ModelMessage, ToolSet, generateText, stepCountIs } from 'ai';
+import { ProviderOptions } from '@ai-sdk/provider-utils';
 import { AIProviderName } from '@activepieces/shared';
 import { createAIModel } from '@activepieces/piece-ai';
 
@@ -32,10 +33,14 @@ export type SafeGenerateParams = {
   maxOutputTokens?: number;
   temperature?: number;
   bucketKey?: string;
+  tools?: ToolSet;
+  providerOptions?: ProviderOptions;
+  maxToolSteps?: number;
 };
 
 export type SafeGenerateResult = {
   text: string;
+  sources?: unknown;
   safety: {
     mode: string;
     outboundRedactions: number;
@@ -130,6 +135,9 @@ export async function safeGenerate(params: SafeGenerateParams): Promise<SafeGene
       messages: redactedMessages,
       maxOutputTokens,
       temperature,
+      tools: params.tools,
+      providerOptions: params.providerOptions,
+      stopWhen: params.tools && params.maxToolSteps ? stepCountIs(params.maxToolSteps) : undefined,
     });
 
     await circuitBreaker.recordSuccess({ store: context.store, storeKey: breakerKey });
@@ -152,6 +160,7 @@ export async function safeGenerate(params: SafeGenerateParams): Promise<SafeGene
 
     return {
       text: outboundText,
+      sources: response.sources,
       safety: {
         mode: config.safetyMode,
         outboundRedactions,

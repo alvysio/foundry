@@ -481,7 +481,7 @@
     },
     "packages/pieces/community/ai": {
       "name": "@activepieces/piece-ai",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "dependencies": {
         "@activepieces/pieces-common": "workspace:*",
         "@activepieces/pieces-framework": "workspace:*",
@@ -8405,12 +8405,13 @@
     },
     "packages/pieces/custom/alvys-intelligence": {
       "name": "@activepieces/piece-alvys-intelligence",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "dependencies": {
         "@activepieces/piece-ai": "workspace:*",
         "@activepieces/pieces-common": "workspace:*",
         "@activepieces/pieces-framework": "workspace:*",
         "@activepieces/shared": "workspace:*",
+        "@ai-sdk/provider-utils": "4.0.24",
         "ai": "6.0.170",
         "tslib": "2.6.2",
         "zod": "4.3.6",

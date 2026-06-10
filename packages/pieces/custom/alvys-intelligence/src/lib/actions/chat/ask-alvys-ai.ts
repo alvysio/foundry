@@ -1,9 +1,11 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
 import { ModelMessage } from 'ai';
+import { buildWebSearchConfig, buildWebSearchOptionsProperty } from '@activepieces/piece-ai';
 
 import { alvysIntelligenceAuth } from '../../auth';
 import { alvysModelProp } from '../../common/props';
 import { safeGenerate } from '../../common/safe-text';
+import { resolveWebSearchProvider } from '../../common/web-search-provider';
 import { advancedProp } from '../common/advanced-prop';
 
 type ConversationCache = ModelMessage[];
@@ -13,7 +15,7 @@ export const askAlvysAi = createAction({
   name: 'ask_alvys_ai',
   displayName: 'Ask Alvys AI',
   description:
-    'Run a prompt through Alvys Intelligence with safety policy, rate limiting, and circuit-breaker resilience.',
+    'Run a prompt through Alvys Intelligence with safety policy, rate limiting, and circuit-breaker resilience. Optional web search adds source-grounded responses.',
   props: {
     model: alvysModelProp,
     prompt: Property.LongText({
@@ -43,6 +45,20 @@ export const askAlvysAi = createAction({
       required: false,
       defaultValue: 100,
     }),
+    webSearch: Property.Checkbox({
+      displayName: 'Web Search',
+      description: 'When enabled, the model can call its provider-native web search tool to ground responses with live sources.',
+      required: false,
+      defaultValue: false,
+    }),
+    webSearchOptions: buildWebSearchOptionsProperty(
+      (propsValue) => ({
+        provider: resolveWebSearchProvider(propsValue['model'] as string | undefined),
+        model: undefined,
+      }),
+      ['webSearch', 'model'],
+      { showIncludeSources: true },
+    ),
     advanced: advancedProp,
   },
   async run(context) {
@@ -60,6 +76,16 @@ export const askAlvysAi = createAction({
     messages.push(...conversation);
     messages.push({ role: 'user', content: context.propsValue.prompt });
 
+    const webSearchEnabled = !!context.propsValue.webSearch;
+    const webSearchOptions = (context.propsValue.webSearchOptions ?? {}) as Record<string, unknown>;
+
+    const { tools, providerOptions } = buildWebSearchConfig({
+      provider: resolveWebSearchProvider(context.propsValue.model),
+      model: undefined,
+      webSearchEnabled,
+      webSearchOptions: webSearchOptions as never,
+    });
+
     const result = await safeGenerate({
       context,
       modelId: context.propsValue.model,
@@ -67,13 +93,24 @@ export const askAlvysAi = createAction({
       maxOutputTokens: context.propsValue.maxOutputTokens ?? 2048,
       temperature: (context.propsValue.creativity ?? 100) / 100,
       bucketKey: 'chat',
+      tools,
+      providerOptions,
+      maxToolSteps: tools ? Number(webSearchOptions['maxUses'] ?? 5) : undefined,
     });
 
     if (conversationKey) {
-      const next = [...conversation, { role: 'user' as const, content: context.propsValue.prompt }, { role: 'assistant' as const, content: result.text }];
+      const next = [
+        ...conversation,
+        { role: 'user' as const, content: context.propsValue.prompt },
+        { role: 'assistant' as const, content: result.text },
+      ];
       await context.store.put(conversationKey, next);
     }
 
+    const includeSources = !!webSearchOptions['includeSources'];
+    if (!includeSources) {
+      return { ...result, sources: undefined };
+    }
     return result;
   },
 });

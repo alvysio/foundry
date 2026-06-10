@@ -25,3 +25,7 @@ export const ai = createPiece({
 
 export * from './lib/common/props';
 export * from './lib/common/ai-sdk';
+export * from './lib/common/web-search';
+export * from './lib/actions/agents/agent-output-builder';
+export * from './lib/actions/agents/utils';
+export * from './lib/actions/agents/tools';
