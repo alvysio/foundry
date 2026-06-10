@@ -381,6 +381,7 @@ import { AddTriggerSourceFlowVersionIdIndex1792000000000 } from './migration/pos
 import { AddVariableTable1793000000000 } from './migration/postgres/1793000000000-AddVariableTable'
 import { AddCreatedByToFlow1794000000000 } from './migration/postgres/1794000000000-AddCreatedByToFlow'
 import { AddDataManipulationEnabledToPlatformPlan1794000000000 } from './migration/postgres/1794000000000-AddDataManipulationEnabledToPlatformPlan'
+import { AddOdinTierConfigTable1795000000000 } from './migration/postgres/1795000000000-AddOdinTierConfigTable'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
@@ -777,6 +778,7 @@ export const getMigrations = (): (new () => Migration)[] => {
         AddCreatedByToFlow1794000000000,
         AddStatusToChatConversation1779500000000,
         AddDataManipulationEnabledToPlatformPlan1794000000000,
+        AddOdinTierConfigTable1795000000000,
     ]
     return migrations
 }
