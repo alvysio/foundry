@@ -1,0 +1,20 @@
+{
+  "name": "@activepieces/piece-alvys-intelligence",
+  "version": "0.4.0",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.lib.json && cp package.json dist/",
+    "lint": "eslint 'src/**/*.ts'"
+  },
+  "dependencies": {
+    "@activepieces/piece-ai": "workspace:*",
+    "@activepieces/pieces-common": "workspace:*",
+    "@activepieces/pieces-framework": "workspace:*",
+    "@activepieces/shared": "workspace:*",
+    "@ai-sdk/provider-utils": "4.0.24",
+    "ai": "6.0.170",
+    "tslib": "2.6.2",
+    "zod": "4.3.6"
+  }
+}

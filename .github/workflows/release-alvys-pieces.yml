@@ -1,0 +1,123 @@
+name: Release Alvys Pieces
+
+# Publishes Alvys-owned pieces (alvys, alvys-intelligence) to GitHub Packages
+# under the @alvysio scope.
+#
+# Two channels:
+#   beta   — every PR opened/sync against main that touches the alvys pieces.
+#            Version stamped X.Y.Z-beta.<short-sha>, npm dist-tag=beta.
+#   stable — on push to main with changes under packages/pieces/custom/alvys*.
+#            Version straight from package.json, npm dist-tag=latest.
+#
+# Self-host AP servers consume by configuring @alvysio scope -> npm.pkg.github.com
+# in their .npmrc and installing @alvysio/piece-alvys[@beta|@latest].
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/pieces/custom/alvys/**'
+      - 'packages/pieces/custom/alvys-intelligence/**'
+      - 'packages/shared/**'
+      - 'tools/scripts/pieces/publish-alvys-pieces.sh'
+      - '.github/workflows/release-alvys-pieces.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/pieces/custom/alvys/**'
+      - 'packages/pieces/custom/alvys-intelligence/**'
+      - 'packages/shared/**'
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'Release channel'
+        required: true
+        default: 'beta'
+        type: choice
+        options:
+          - beta
+          - stable
+
+concurrency:
+  group: release-alvys-pieces-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine channel
+        id: chan
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "channel=${{ inputs.channel }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "channel=stable" >> "$GITHUB_OUTPUT"
+          else
+            echo "channel=beta" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://npm.pkg.github.com
+          scope: '@${{ github.repository_owner }}'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache bun deps
+        uses: actions/cache@v5
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ hashFiles('bun.lock', 'package.json') }}
+          restore-keys: bun-
+
+      - name: Install deps
+        run: bun install
+
+      - name: Publish Alvys pieces
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: tools/scripts/pieces/publish-alvys-pieces.sh ${{ steps.chan.outputs.channel }}
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Release Alvys Pieces"
+            echo ""
+            echo "- channel: \`${{ steps.chan.outputs.channel }}\`"
+            echo "- scope:   \`@${{ github.repository_owner }}\`"
+            echo "- registry: https://npm.pkg.github.com"
+            echo ""
+            echo "### Install"
+            echo ""
+            echo '```bash'
+            echo "# .npmrc"
+            echo "@${{ github.repository_owner }}:registry=https://npm.pkg.github.com"
+            echo "//npm.pkg.github.com/:_authToken=\\\${GITHUB_TOKEN}"
+            echo ""
+            if [ "${{ steps.chan.outputs.channel }}" = "stable" ]; then
+              echo "npm install @${{ github.repository_owner }}/piece-alvys"
+              echo "npm install @${{ github.repository_owner }}/piece-alvys-intelligence"
+            else
+              echo "npm install @${{ github.repository_owner }}/piece-alvys@beta"
+              echo "npm install @${{ github.repository_owner }}/piece-alvys-intelligence@beta"
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
