@@ -37,8 +37,8 @@ SHORT_SHA="${GITHUB_SHA:-$(git rev-parse HEAD)}"
 SHORT_SHA="${SHORT_SHA:0:7}"
 
 PIECES=(
-  "packages/pieces/community/alvys"
-  "packages/pieces/community/alvys-intelligence"
+  "packages/pieces/custom/alvys"
+  "packages/pieces/custom/alvys-intelligence"
 )
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
