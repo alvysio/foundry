@@ -28,6 +28,55 @@ import {
 const FINISH_REASON_FALLBACK = 'stop'
 const ODIN_AUTO_MODEL_ID = 'auto'
 
+const ALVYS_TIER_ALIAS: Record<string, 'fast' | 'balanced' | 'powerful'> = {
+    'alvys-fast': 'fast',
+    'alvys-balanced': 'balanced',
+    'alvys-smart': 'powerful',
+    'alvys-long-context': 'powerful',
+}
+
+function resolveExplicitDecision(
+    requestedModel: string,
+    tierMap: Record<'fast' | 'balanced' | 'powerful', string>,
+    mode: RoutingMode,
+): RoutingDecision {
+    const aliasTier = ALVYS_TIER_ALIAS[requestedModel]
+    if (aliasTier !== undefined) {
+        const realModel = tierMap[aliasTier]
+        return {
+            tier: aliasTier,
+            provider: providerFromModel(realModel),
+            model: realModel,
+            confidence: 1,
+            reason: `explicit alvys-tier=${requestedModel} → tier=${aliasTier} model=${realModel}`,
+            mode,
+            complexityScore: 0,
+            alternatives: [],
+        }
+    }
+    return {
+        tier: resolveTier(requestedModel, tierMap) ?? 'balanced',
+        provider: providerFromModel(requestedModel),
+        model: requestedModel,
+        confidence: 1,
+        reason: `explicit model=${requestedModel}`,
+        mode,
+        complexityScore: 0,
+        alternatives: [],
+    }
+}
+
+function redactMessages(messages: ChatMessage[]): { redacted: ChatMessage[], redactionCount: number } {
+    let redactionCount = 0
+    const redacted = messages.map(m => {
+        const report = guardInput(m.content)
+        if (report.findings.length === 0) return m
+        redactionCount += report.findings.length
+        return { ...m, content: report.redactedText }
+    })
+    return { redacted, redactionCount }
+}
+
 const noopLogger = {
     info: () => undefined,
     warn: () => undefined,
@@ -89,17 +138,10 @@ async function chat({
     }
 
     const decision: RoutingDecision = (request.model !== undefined && request.model !== ODIN_AUTO_MODEL_ID)
-        ? {
-            tier: resolveTier(request.model, tierMap) ?? 'balanced',
-            provider: providerFromModel(request.model),
-            model: request.model,
-            confidence: 1,
-            reason: `explicit model=${request.model}`,
-            mode: request.mode,
-            complexityScore: 0,
-            alternatives: [],
-        }
+        ? resolveExplicitDecision(request.model, tierMap, request.mode)
         : decideRoute({ messages: request.messages, mode: request.mode, tierMap })
+
+    const { redacted: redactedMessages } = redactMessages(request.messages)
 
     const model = await buildModel({ platformId, modelId: decision.model })
 
@@ -107,7 +149,7 @@ async function chat({
     try {
         result = await generateText({
             model,
-            messages: request.messages as ModelMessage[],
+            messages: redactedMessages as ModelMessage[],
             temperature: request.temperature,
             ...(request.maxOutputTokens !== undefined ? { maxOutputTokens: request.maxOutputTokens } : {}),
         })

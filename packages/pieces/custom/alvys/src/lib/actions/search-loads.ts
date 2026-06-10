@@ -71,8 +71,8 @@ export const searchLoadsAction = createAction({
     if (customerId) base['CustomerId'] = customerId;
     if (dateRangeFrom || dateRangeTo) {
       base['DateRange'] = {
-        ...(dateRangeFrom ? { From: dateRangeFrom } : {}),
-        ...(dateRangeTo ? { To: dateRangeTo } : {}),
+        ...(dateRangeFrom ? { Start: dateRangeFrom } : {}),
+        ...(dateRangeTo ? { End: dateRangeTo } : {}),
       };
     }
     return alvysRequest({

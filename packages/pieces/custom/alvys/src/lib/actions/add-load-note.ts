@@ -16,8 +16,14 @@ export const addLoadNoteAction = createAction({
       displayName: 'Load Number',
       required: true,
     }),
-    note: Property.LongText({
-      displayName: 'Note',
+    description: Property.LongText({
+      displayName: 'Description',
+      description: 'Body of the note.',
+      required: true,
+    }),
+    noteType: Property.ShortText({
+      displayName: 'Note Type',
+      description: 'Note category (e.g. "Operations", "Billing"). Required by the Alvys public API.',
       required: true,
     }),
     extra: Property.Json({
@@ -28,8 +34,12 @@ export const addLoadNoteAction = createAction({
     }),
   },
   async run(context) {
-    const { version, loadNumber, note, extra } = context.propsValue;
-    const body: Record<string, unknown> = { Note: note };
+    const { version, loadNumber, description, noteType, extra } = context.propsValue;
+    const body: Record<string, unknown> = {
+      Id: 0,
+      Description: description,
+      NoteType: noteType,
+    };
     if (extra && typeof extra === 'object' && !Array.isArray(extra)) {
       Object.assign(body, extra);
     }
