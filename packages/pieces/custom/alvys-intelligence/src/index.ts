@@ -4,6 +4,8 @@ import { alvysIntelligenceAuth } from './lib/auth';
 import { extractDocument } from './lib/actions/document/extract-document';
 import { classifyDocument } from './lib/actions/document/classify-document';
 import { routeDocument } from './lib/actions/document/route-document';
+import { parseDocument } from './lib/actions/document/parse-document';
+import { searchParsedDocuments } from './lib/actions/document/search-parsed-documents';
 import { askAlvysAi } from './lib/actions/chat/ask-alvys-ai';
 import { summarizeText } from './lib/actions/text/summarize-text';
 import { classifyText } from './lib/actions/utility/classify-text';
@@ -12,7 +14,7 @@ import { runAgent } from './lib/actions/agents/run-agent';
 export const alvysIntelligence = createPiece({
   displayName: 'Alvys Intelligence',
   description:
-    'Alvys-branded AI surface — chat (Ask, Summarize, Classify, Extract Structured Data) on top of the platform-configured Alvys Intelligence AI Provider, plus document classify / route / extract. All actions are wrapped with PII redaction, prompt-injection scanning, sliding-window rate limit, and a per-tenant circuit breaker. Policy applies platform default → connection override → per-step override.',
+    'Alvys-branded AI surface — chat (Ask, Summarize, Classify, Extract Structured Data) on top of the platform-configured Alvys Intelligence AI Provider, plus document classify / route / extract / parse / search. All actions are wrapped with PII redaction, prompt-injection scanning, sliding-window rate limit, and a per-tenant circuit breaker. Policy applies platform default → connection override → per-step override.',
   auth: alvysIntelligenceAuth,
   minimumSupportedRelease: '0.36.1',
   logoUrl:
@@ -27,6 +29,8 @@ export const alvysIntelligence = createPiece({
     classifyDocument,
     routeDocument,
     extractDocument,
+    parseDocument,
+    searchParsedDocuments,
   ],
   triggers: [],
 });

@@ -1,14 +1,8 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
 import { alvysIntelligenceAuth } from '../../auth';
-import { readAuthProps } from '../../runtime/key-mapping';
-import { circuitBreaker } from '../../runtime/circuit-breaker';
-import { rateLimiter } from '../../runtime/rate-limiter';
-import { documentIntelExtract } from '../../runtime/providers/document-intel';
-import {
-  resolveEffectiveConfig,
-  readConnectionConfigOverrides,
-} from '../../runtime/effective-config';
-import { advancedProp, readStepAdvanced } from '../common/advanced-prop';
+import { bemProvider } from '../../runtime/providers/bem';
+import { advancedProp } from '../common/advanced-prop';
+import { documentCall } from '../common/document-call';
 import { documentPipeline } from '../../runtime/document-pipeline';
 
 /**
@@ -32,7 +26,7 @@ export const routeDocument = createAction({
     fallback: Property.ShortText({
       displayName: 'Fallback Route Key',
       description:
-        'Returned when classification confidence is below the minimum or the type is not in the allowed set.',
+        'Returned when classification confidence is below the minimum or the classifier routes to its error-fallback classification.',
       required: false,
       defaultValue: 'other',
     }),
@@ -44,75 +38,64 @@ export const routeDocument = createAction({
     advanced: advancedProp,
   },
   async run(context) {
-    const auth = readAuthProps(context.auth);
-    if (!auth.documentKey) {
-      throw new Error('Document Intelligence Key is not configured on the Alvys Intelligence connection.');
-    }
-    if (!auth.documentBaseUrl?.trim()) {
-      throw new Error('Document Intelligence Endpoint is not configured on the Alvys Intelligence connection.');
-    }
-
-    const config = await resolveEffectiveConfig({
+    const call = await documentCall.begin({
+      rawAuth: context.auth,
       store: context.store,
       apiUrl: context.server.apiUrl,
       serverToken: context.server.token,
-      connectionConfig: readConnectionConfigOverrides(context.auth),
-      stepConfig: readStepAdvanced(context.propsValue.advanced),
+      projectId: context.project.id,
+      advanced: context.propsValue.advanced,
+      rateKeySuffix: 'classify',
+      unavailableMessage: 'Document classification is temporarily unavailable. Retry shortly.',
     });
-
-    const tenantKey = context.project.id;
-    const rl = await rateLimiter.checkAndIncrement({
-      store: context.store,
-      storeKey: `alvys.intelligence.${tenantKey}.rl.classify`,
-      config: { maxRequests: config.rateLimitMaxRequests, windowMs: config.rateLimitWindowSec * 1000 },
-    });
-    if (!rl.allowed) {
-      throw new Error(`Rate limit exceeded. Retry in ${Math.ceil(rl.retryAfterMs / 1000)}s.`);
-    }
-
-    const breakerKey = `alvys.intelligence.${tenantKey}.cb.document`;
-    const breakerCheck = await circuitBreaker.checkAllowed({
-      store: context.store,
-      storeKey: breakerKey,
-      config: { failureThreshold: config.circuitFailureThreshold, recoveryWindowMs: config.circuitRecoveryWindowSec * 1000 },
-    });
-    if (!breakerCheck.allowed) {
-      throw new Error('Document classification is temporarily unavailable. Retry shortly.');
-    }
 
     const fallback = (context.propsValue.fallback ?? 'other').trim() || 'other';
     const minConfidence = context.propsValue.minConfidence ?? 0.6;
     const file = context.propsValue.file;
-    const baseUrl = config.documentBaseUrl?.trim() || auth.documentBaseUrl;
+    const workflowName = await documentCall.resolveWorkflowName({
+      flows: context.flows,
+      stepName: context.step.name,
+      store: context.store,
+      primitive: 'classify',
+    });
 
     try {
-      const raw = await documentIntelExtract({
-        apiKey: auth.documentKey,
-        baseUrl,
-        workflowId: documentPipeline.classificationWorkflowId(),
-        fileBase64: file.base64,
-        fileName: file.filename,
-        mimeType: 'application/octet-stream',
+      const result = await documentCall.callDocumentWorkflow({
+        store: context.store,
+        ensure: {
+          apiKey: call.apiKey,
+          baseUrl: call.baseUrl,
+          workflowName,
+          primitive: 'classify',
+          displayName: `Alvys Route — ${context.step.name}`,
+          classifications: [...documentPipeline.classificationCriteria()],
+        },
+        call: {
+          apiKey: call.apiKey,
+          baseUrl: call.baseUrl,
+          workflowName,
+          fileBase64: file.base64,
+          fileName: file.filename,
+          timeoutMs: call.config.documentTimeoutMs,
+        },
       });
-      await circuitBreaker.recordSuccess({ store: context.store, storeKey: breakerKey });
+      await call.recordSuccess();
 
-      const fields = raw.fields as { detectedType?: string; documentType?: string; confidence?: number };
-      const detectedType = fields.detectedType ?? fields.documentType ?? fallback;
-      const confidence = typeof fields.confidence === 'number' ? fields.confidence : raw.confidence ?? 0;
-      const routeKey = confidence >= minConfidence ? detectedType : fallback;
+      const { choice, confidence: rawConfidence } = bemProvider.readClassifyOutput(result);
+      const confidence = rawConfidence ?? null;
+      const detectedType = choice ?? fallback;
+      const routeKey = confidence === null || confidence >= minConfidence ? detectedType : fallback;
 
       return {
         routeKey,
         detectedType,
         confidence,
-        rateLimit: { remaining: rl.remaining, total: rl.total },
+        callId: result.callID,
+        workflowName,
+        rateLimit: call.rateLimit,
       };
     } catch (err) {
-      await circuitBreaker.recordFailure({
-        store: context.store,
-        storeKey: breakerKey,
-        config: { failureThreshold: config.circuitFailureThreshold, recoveryWindowMs: config.circuitRecoveryWindowSec * 1000 },
-      });
+      await call.recordFailure();
       throw err;
     }
   },
