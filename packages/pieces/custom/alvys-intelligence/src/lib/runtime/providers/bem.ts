@@ -104,17 +104,23 @@ async function callWorkflowAndAwait(params: {
   let call = await callWorkflowSync(params);
 
   while (call.status === 'pending' || call.status === 'running') {
+    if (!call.callID) break;
     if (Date.now() - startedAt + POLL_INTERVAL_MS > params.timeoutMs) {
       break;
     }
     await sleep(POLL_INTERVAL_MS);
-    if (!call.callID) break;
     call = await getCall({ apiKey: params.apiKey, baseUrl: params.baseUrl, callId: call.callID });
   }
 
   if (call.status === 'failed') {
     const messages = readErrorMessages(call);
     throw new Error(`BEM workflow "${params.workflowName}" failed: ${messages.join('; ') || 'no error detail returned'}`);
+  }
+  if (call.status === 'pending' || call.status === 'running') {
+    const callIdDetail = call.callID ? `callID: ${call.callID}` : 'no callID returned';
+    throw new Error(
+      `BEM workflow "${params.workflowName}" did not complete within ${params.timeoutMs}ms (${callIdDetail})`,
+    );
   }
   return call;
 }
