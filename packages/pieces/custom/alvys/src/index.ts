@@ -6,7 +6,6 @@ import { alvysAuth } from './lib/auth';
 export { alvysAuth };
 import { alvysApiBase } from './lib/common/client';
 import { alvysTokenService } from './lib/common/token-service';
-import type { AlvysAuthValue } from './lib/common/types';
 
 import { searchLoadsAction } from './lib/actions/search-loads';
 import { getLoadNotesAction } from './lib/actions/get-load-notes';
@@ -84,6 +83,25 @@ import { draftCustomerInvoiceAction } from './lib/actions/billing/draft-customer
 import { draftDriverSettlementAction } from './lib/actions/billing/draft-driver-settlement';
 import { sendEdi210Action } from './lib/actions/billing/send-edi-210';
 
+import {
+  createTenderAction,
+  updateTenderAction,
+  cancelTenderAction,
+  acceptTenderAction,
+  acceptTenderUpdatesAction,
+  acceptTenderCancelAction,
+  rejectTenderAction,
+} from './lib/actions/tenders/tender-lifecycle';
+
+import { deleteLoadNoteAction } from './lib/actions/delete-load-note';
+import { undoTripArrivalAction } from './lib/actions/undo-trip-arrival';
+import {
+  uploadCarrierDocumentAction,
+  uploadDriverDocumentAction,
+  uploadTruckDocumentAction,
+  uploadTrailerDocumentAction,
+} from './lib/actions/upload-entity-document';
+
 export const alvys = createPiece({
   displayName: 'Alvys',
   description:
@@ -109,21 +127,33 @@ export const alvys = createPiece({
     getLoadRateConfirmationAction,
     getLoadNotesAction,
     addLoadNoteAction,
+    deleteLoadNoteAction,
     getLoadDocumentsAction,
     uploadLoadDocumentAction,
+
+    createTenderAction,
+    updateTenderAction,
+    cancelTenderAction,
+    acceptTenderAction,
+    acceptTenderUpdatesAction,
+    acceptTenderCancelAction,
+    rejectTenderAction,
 
     searchTripsAction,
     getTripStopsAction,
     getTripDocumentsAction,
     recordTripArrivalAction,
+    undoTripArrivalAction,
     recordTripDepartureAction,
     updateTripAppointmentAction,
 
     searchDriversAction,
     getDriverAction,
+    uploadDriverDocumentAction,
 
     searchCarriersAction,
     getCarrierAction,
+    uploadCarrierDocumentAction,
 
     searchCustomersAction,
     getCustomerAction,
@@ -131,8 +161,10 @@ export const alvys = createPiece({
 
     searchTrucksAction,
     getTruckAction,
+    uploadTruckDocumentAction,
 
     getTrailerAction,
+    uploadTrailerDocumentAction,
 
     searchInvoicesAction,
     createCarrierInvoiceAction,
