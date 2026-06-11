@@ -1,4 +1,10 @@
-import { ArraySubProps, createAction, PieceAuth, Property } from '@activepieces/pieces-framework';
+import {
+  ArraySubProps,
+  createAction,
+  PieceAuth,
+  Property,
+} from '@activepieces/pieces-framework';
+import { httpClient, HttpMethod } from '@activepieces/pieces-common';
 import {
   AgentOutputField,
   AgentPieceProps,
@@ -7,7 +13,9 @@ import {
   AgentToolType,
   AgentKnowledgeBaseTool,
   KnowledgeBaseSourceType,
+  AIProviderModel,
   AIProviderName,
+  AIProviderWithoutSensitiveData,
   ExecutionToolStatus,
   TASK_COMPLETION_TOOL_NAME,
   isNil,
@@ -26,13 +34,10 @@ import {
   createEmbeddingModel,
 } from '@activepieces/piece-ai';
 
-import { alvysAiProps } from '../../common/props';
 import { rateLimiter } from '../../runtime/rate-limiter';
 import { circuitBreaker } from '../../runtime/circuit-breaker';
 import { safety } from '../../runtime/safety';
-import {
-  resolveEffectiveConfig,
-} from '../../runtime/effective-config';
+import { resolveEffectiveConfig } from '../../runtime/effective-config';
 import { advancedProp, readStepAdvanced } from '../common/advanced-prop';
 
 const agentToolArrayItems: ArraySubProps<boolean> = {
@@ -48,15 +53,63 @@ const agentToolArrayItems: ArraySubProps<boolean> = {
   sourceName: Property.ShortText({ displayName: 'Source Name', required: false }),
 };
 
-export const runAgent = createAction({
+/**
+ * Single "AI Model" dropdown. The provider surface is fixed to "Alvys" — the
+ * step author never picks a provider; models come from the platform's
+ * pre-configured AI Provider (Cloudflare AI Gateway preferred) in Platform
+ * Admin → AI Providers.
+ */
+const alvysModelProp = Property.Dropdown<AlvysModelSelection, true>({
   auth: PieceAuth.None(),
-  name: 'run_alvys_agent',
-  displayName: 'Run Alvys Agent',
+  displayName: 'AI Model',
+  description: 'Pre-configured Alvys AI models.',
+  required: true,
+  refreshers: [],
+  options: async (_, ctx) => {
+    const { body: configuredProviders } = await httpClient.sendRequest<
+      AIProviderWithoutSensitiveData[]
+    >({
+      method: HttpMethod.GET,
+      url: `${ctx.server.apiUrl}v1/ai-providers`,
+      headers: { Authorization: `Bearer ${ctx.server.token}` },
+    });
+
+    const provider = pickAlvysProvider(configuredProviders);
+    if (isNil(provider)) {
+      return {
+        disabled: true,
+        options: [],
+        placeholder: 'No Alvys AI provider configured. Contact your administrator.',
+      };
+    }
+
+    const { body: allModels } = await httpClient.sendRequest<AIProviderModel[]>({
+      method: HttpMethod.GET,
+      url: `${ctx.server.apiUrl}v1/ai-providers/${provider}/models`,
+      headers: { Authorization: `Bearer ${ctx.server.token}` },
+    });
+
+    return {
+      placeholder: 'Select AI Model',
+      disabled: false,
+      options: allModels
+        .filter((model) => model.type === 'text')
+        .map((model) => ({
+          label: model.name,
+          value: { provider, model: model.id },
+        })),
+    };
+  },
+});
+
+export const inference = createAction({
+  auth: PieceAuth.None(),
+  name: 'inference',
+  displayName: 'Inference',
   description:
-    'Multi-step reasoning loop powered by Alvys Intelligence. Wraps the upstream AI agent with rate limiting, circuit-breaker resilience, and inbound prompt-injection scanning on the final transcript. Safety + rate-limit policy resolved from platform defaults plus the per-step Advanced overrides — no per-connection override here.',
+    'Run a prompt against a pre-configured Alvys AI model with Agent Tools, Knowledge Bases, and Structured Output. Protected by Agent Shield.',
   props: {
-    provider: alvysAiProps.provider,
-    model: alvysAiProps.model,
+    model: alvysModelProp,
     [AgentPieceProps.PROMPT]: Property.LongText({
       displayName: 'Prompt',
       description: 'Describe what you want the assistant to do.',
@@ -89,24 +142,22 @@ export const runAgent = createAction({
       defaultValue: false,
     }),
     [AgentPieceProps.WEB_SEARCH_OPTIONS]: buildWebSearchOptionsProperty(
-      (propsValue) => ({
-        provider: propsValue['provider'] as string | undefined,
-        model: propsValue['model'] as string | undefined,
-      }),
-      ['webSearch', 'provider', 'model'],
+      (propsValue) => {
+        const selection = propsValue['model'] as AlvysModelSelection | undefined;
+        return { provider: selection?.provider, model: selection?.model };
+      },
+      ['webSearch', 'model'],
       { showIncludeSources: false },
     ),
     advanced: advancedProp,
   },
   async run(context) {
-    const modelId = context.propsValue.model;
-    if (!modelId) {
-      throw new Error('Model is required.');
+    const selection = context.propsValue.model as AlvysModelSelection | undefined;
+    if (!selection?.model || !selection.provider) {
+      throw new Error('AI Model is required.');
     }
-    const provider = context.propsValue.provider as AIProviderName;
-    if (!provider) {
-      throw new Error('AI Provider is required.');
-    }
+    const modelId = selection.model;
+    const provider = selection.provider as AIProviderName;
 
     const config = await resolveEffectiveConfig({
       store: context.store,
@@ -119,7 +170,7 @@ export const runAgent = createAction({
     const tenantKey = context.project.id;
     const rl = await rateLimiter.checkAndIncrement({
       store: context.store,
-      storeKey: `alvys.intelligence.${tenantKey}.rl.agent`,
+      storeKey: `alvys.intelligence.${tenantKey}.rl.inference`,
       config: {
         maxRequests: config.rateLimitMaxRequests,
         windowMs: config.rateLimitWindowSec * 1000,
@@ -329,7 +380,7 @@ export const runAgent = createAction({
           .map((e) => `${e.type}: ${e.message}${e.details != null ? `\n  ${String(e.details)}` : ''}`)
           .join('\n');
         outputBuilder.addMarkdown(`\n\n**Errors encountered:**\n${summary}`);
-        outputBuilder.fail({ message: 'Agent completed with errors' });
+        outputBuilder.fail({ message: 'Inference completed with errors' });
       } else {
         outputBuilder.setStatus(AgentTaskStatus.COMPLETED);
       }
@@ -344,7 +395,7 @@ export const runAgent = createAction({
           recoveryWindowMs: config.circuitRecoveryWindowSec * 1000,
         },
       });
-      const message = `Agent failed unexpectedly: ${inspect(error)}`;
+      const message = `Inference failed unexpectedly: ${inspect(error)}`;
       outputBuilder.fail({ message });
       await context.output.update({ data: outputBuilder.build() });
       await Promise.all(mcpClients.map(async (client) => client.close()));
@@ -359,7 +410,7 @@ export const runAgent = createAction({
       promptInjectionsDetected = findings.length;
       if (findings.length > 0) {
         if (config.promptInjectionAction === 'block') {
-          outputBuilder.fail({ message: '[blocked: prompt-injection detected in agent output]' });
+          outputBuilder.fail({ message: '[blocked: prompt-injection detected in output]' });
           flagged = true;
         } else if (config.promptInjectionAction === 'warn') {
           flagged = true;
@@ -386,3 +437,22 @@ export const runAgent = createAction({
     };
   },
 });
+
+/**
+ * Provider preference for the Alvys model surface: Cloudflare AI Gateway is
+ * the intended backend; fall back to any other configured provider so dev
+ * environments still work.
+ */
+function pickAlvysProvider(providers: AIProviderWithoutSensitiveData[]): string | null {
+  const preferenceOrder = [AIProviderName.CLOUDFLARE_GATEWAY, AIProviderName.ACTIVEPIECES];
+  for (const preferred of preferenceOrder) {
+    const match = providers.find((p) => p.provider === preferred);
+    if (match) return match.provider;
+  }
+  return providers[0]?.provider ?? null;
+}
+
+type AlvysModelSelection = {
+  provider: string;
+  model: string;
+};

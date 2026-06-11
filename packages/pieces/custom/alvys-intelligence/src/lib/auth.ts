@@ -14,17 +14,11 @@ import { PieceAuth, Property } from '@activepieces/pieces-framework';
  */
 export const alvysIntelligenceAuth = PieceAuth.CustomAuth({
   description: `
-Alvys Intelligence credentials and safety policy. In most embedded
-deployments this connection is **auto-provisioned for your project by your
-administrator** — you should not need to fill it in.
+Alvys Intelligence connection — usually auto-provisioned by your administrator.
 
-- **Document Intelligence Key / Endpoint** are required only if you use
-  the Classify / Route / Extract Document actions.
-- **Safety + rate-limit + circuit-breaker fields** apply to all actions,
-  including the AI chat actions which otherwise use the platform-configured
-  Alvys Intelligence AI Provider.
-
-Leave a field blank to inherit the platform default.
+- **Alvys Bearer Token**: required for Ask Agent.
+- **Document Intelligence Key**: required for the Document actions.
+- **Safety / rate-limit / circuit-breaker fields**: optional; blank inherits the platform default.
   `,
   required: true,
   props: {
@@ -39,6 +33,18 @@ Leave a field blank to inherit the platform default.
           { label: 'QA', value: 'qa' },
         ],
       },
+    }),
+    chatBearerToken: PieceAuth.SecretText({
+      displayName: 'Alvys Bearer Token',
+      description:
+        'Auth0-issued Alvys JWT (with company-code claim) accepted by the Insights chat API. Required for the Ask Agent action.',
+      required: false,
+    }),
+    chatBaseUrl: Property.ShortText({
+      displayName: 'Chat API Base URL (Optional)',
+      description:
+        'Override the Insights chat API base URL. Defaults to https://app.alvys.com (production) or https://qa.alvys.net (QA).',
+      required: false,
     }),
     documentKey: PieceAuth.SecretText({
       displayName: 'Document Intelligence Key',
