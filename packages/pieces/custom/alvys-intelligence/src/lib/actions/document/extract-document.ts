@@ -11,7 +11,7 @@ export const extractDocument = createAction({
   name: 'extract_document',
   displayName: 'Extract Document',
   description:
-    'Extract Alvys-shaped structured data from a transportation document via a BEM Extract workflow (synchronous mode). Document type drives the schema; tenant custom-references are merged into the result.',
+    'Extract Alvys-shaped structured data from a transportation document. Document type drives the schema; tenant custom-references are merged into the result.',
   props: {
     documentType: Property.StaticDropdown<string>({
       displayName: 'Document Type',
@@ -73,13 +73,13 @@ export const extractDocument = createAction({
     callReferenceId: Property.ShortText({
       displayName: 'Call Reference Id',
       description:
-        'Optional idempotency / tracking id forwarded to BEM as callReferenceID. Defaults to a value derived from the linked entity.',
+        'Optional idempotency / tracking id forwarded to the document-intelligence pipeline. Defaults to a value derived from the linked entity.',
       required: false,
     }),
     workflowName: Property.ShortText({
-      displayName: 'BEM Workflow Override',
+      displayName: 'Workflow Override',
       description:
-        'Optional BEM workflow name. Leave blank to use the Alvys workflow registered for the selected document type.',
+        'Optional document-workflow name. Leave blank to use the Alvys workflow registered for the selected document type.',
       required: false,
     }),
     advanced: advancedProp,

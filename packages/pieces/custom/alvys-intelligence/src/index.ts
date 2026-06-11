@@ -14,7 +14,7 @@ import { runAgent } from './lib/actions/agents/run-agent';
 export const alvysIntelligence = createPiece({
   displayName: 'Alvys Intelligence',
   description:
-    'Alvys-branded AI surface — chat (Ask, Summarize, Classify, Extract Structured Data) on top of the platform-configured Alvys Intelligence AI Provider, plus document classify / route / extract / parse / search (BEM synchronous mode). All actions are wrapped with PII redaction, prompt-injection scanning, sliding-window rate limit, and a per-tenant circuit breaker. Policy applies platform default → connection override → per-step override.',
+    'Alvys-branded AI surface — chat (Ask, Summarize, Classify, Extract Structured Data) on top of the platform-configured Alvys Intelligence AI Provider, plus document classify / route / extract / parse / search. All actions are wrapped with PII redaction, prompt-injection scanning, sliding-window rate limit, and a per-tenant circuit breaker. Policy applies platform default → connection override → per-step override.',
   auth: alvysIntelligenceAuth,
   minimumSupportedRelease: '0.36.1',
   logoUrl:

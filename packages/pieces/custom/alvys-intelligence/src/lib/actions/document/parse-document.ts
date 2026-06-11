@@ -10,7 +10,7 @@ export const parseDocument = createAction({
   name: 'parse_document',
   displayName: 'Parse Document',
   description:
-    'Parse a document into page-aware sections, named entities, and relationships via a BEM Parse workflow (synchronous mode). The parsed output is stored in the BEM file system under the Call Reference Id and can be queried with the Search Parsed Documents action.',
+    'Parse a document into page-aware sections, named entities, and relationships. The parsed output is stored under the Call Reference Id and can be queried with the Search Parsed Documents action.',
   props: {
     file: Property.File({
       displayName: 'Document',
@@ -20,19 +20,19 @@ export const parseDocument = createAction({
     callReferenceId: Property.ShortText({
       displayName: 'Call Reference Id',
       description:
-        'Identifier for the parsed document in the BEM file system — used as the `path` for Search Parsed Documents queries (ls / cat / grep / find / xref).',
+        'Identifier for the parsed document — used as the `path` for Search Parsed Documents queries (ls / cat / grep / find / xref).',
       required: true,
     }),
     fetchParsedContent: Property.Checkbox({
       displayName: 'Fetch Parsed Content',
       description:
-        'After parsing completes, read the parsed document back from the BEM file system (`cat`) and include it in the output.',
+        'After parsing completes, read the parsed document back and include it in the output.',
       required: false,
       defaultValue: true,
     }),
     workflowName: Property.ShortText({
-      displayName: 'BEM Workflow Override',
-      description: 'Optional BEM workflow name. Leave blank to use the Alvys document-parse workflow.',
+      displayName: 'Workflow Override',
+      description: 'Optional document-workflow name. Leave blank to use the Alvys document-parse workflow.',
       required: false,
     }),
     advanced: advancedProp,

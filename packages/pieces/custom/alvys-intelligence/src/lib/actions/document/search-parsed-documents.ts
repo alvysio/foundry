@@ -9,7 +9,7 @@ export const searchParsedDocuments = createAction({
   name: 'search_parsed_documents',
   displayName: 'Search Parsed Documents',
   description:
-    'Query documents parsed by the Parse Document action through the BEM file system API: list (ls), read (cat / head), search (grep), and entity-graph queries (find / xref).',
+    'Query documents parsed by the Parse Document action: list (ls), read (cat / head), search (grep), and entity-graph queries (find / xref).',
   props: {
     op: Property.StaticDropdown<string>({
       displayName: 'Operation',

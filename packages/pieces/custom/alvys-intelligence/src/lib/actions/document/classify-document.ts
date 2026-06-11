@@ -26,7 +26,7 @@ export const classifyDocument = createAction({
   name: 'classify_document',
   displayName: 'Classify Document',
   description:
-    'Detect the document type (POD, rate confirmation, BOL, invoice, etc.) for a single file via a BEM Classify workflow (synchronous mode). Use the output to route to a typed Extract Document step.',
+    'Detect the document type (POD, rate confirmation, BOL, invoice, etc.) for a single file. Use the output to route to a typed Extract Document step.',
   props: {
     file: Property.File({
       displayName: 'Document',
@@ -42,18 +42,18 @@ export const classifyDocument = createAction({
     minConfidence: Property.Number({
       displayName: 'Minimum Confidence',
       description:
-        'Below this threshold, detected type is reported as "unknown". Only applied when BEM returns a confidence score.',
+        'Below this threshold, detected type is reported as "unknown". Only applied when the classifier returns a confidence score.',
       required: false,
       defaultValue: 0.6,
     }),
     callReferenceId: Property.ShortText({
       displayName: 'Call Reference Id',
-      description: 'Optional idempotency / tracking id forwarded to BEM as callReferenceID.',
+      description: 'Optional idempotency / tracking id forwarded to the document-intelligence pipeline.',
       required: false,
     }),
     workflowName: Property.ShortText({
-      displayName: 'BEM Workflow Override',
-      description: 'Optional BEM workflow name. Leave blank to use the Alvys document-classification workflow.',
+      displayName: 'Workflow Override',
+      description: 'Optional document-workflow name. Leave blank to use the Alvys document-classification workflow.',
       required: false,
     }),
     advanced: advancedProp,

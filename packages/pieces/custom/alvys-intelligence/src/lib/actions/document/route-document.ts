@@ -17,7 +17,7 @@ export const routeDocument = createAction({
   name: 'route_document',
   displayName: 'Route Document',
   description:
-    'Classify a document via a BEM Classify workflow and return a routing key. Pair with an AP Router to branch by document type.',
+    'Classify a document and return a routing key. Pair with an AP Router to branch by document type.',
   props: {
     file: Property.File({
       displayName: 'Document',
@@ -26,7 +26,7 @@ export const routeDocument = createAction({
     fallback: Property.ShortText({
       displayName: 'Fallback Route Key',
       description:
-        'Returned when classification confidence is below the minimum or BEM routes to its error-fallback classification.',
+        'Returned when classification confidence is below the minimum or the classifier routes to its error-fallback classification.',
       required: false,
       defaultValue: 'other',
     }),

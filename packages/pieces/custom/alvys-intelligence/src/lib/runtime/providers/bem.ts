@@ -38,10 +38,10 @@ function inferInputType(fileName: string): string {
 }
 
 function readErrorMessages(call: BemCall): string[] {
-  const fromErrors = (call.errors ?? []).map((e) => e.errorMessage ?? e.errorCode ?? 'Unknown BEM error');
+  const fromErrors = (call.errors ?? []).map((e) => e.errorMessage ?? e.errorCode ?? 'Unknown upstream error');
   const fromOutputs = (call.outputs ?? [])
     .filter((o) => o.eventType === 'error')
-    .map((o) => o.errorMessage ?? o.errorCode ?? 'Unknown BEM function error');
+    .map((o) => o.errorMessage ?? o.errorCode ?? 'Unknown upstream function error');
   return [...fromErrors, ...fromOutputs];
 }
 
@@ -114,11 +114,11 @@ async function callWorkflowAndAwait(params: {
 
   if (call.status === 'failed') {
     const messages = readErrorMessages(call);
-    throw new Error(`BEM workflow "${params.workflowName}" failed: ${messages.join('; ') || 'no error detail returned'}`);
+    throw new Error(`Document workflow "${params.workflowName}" failed: ${messages.join('; ') || 'no error detail returned'}`);
   }
   if (call.status !== 'completed') {
     throw new Error(
-      `BEM workflow "${params.workflowName}" did not complete within ${params.timeoutMs}ms (call ${call.callID ?? 'unknown'} is still ${call.status}). Increase the Document Timeout or retry later.`,
+      `Document workflow "${params.workflowName}" did not complete within ${params.timeoutMs}ms (call ${call.callID ?? 'unknown'} is still ${call.status}). Increase the Document Timeout or retry later.`,
     );
   }
   return call;
