@@ -140,20 +140,26 @@ export const askAgent = createAction({
     const llmModel = modelChoice && modelChoice !== AUTO_MODEL ? modelChoice : undefined;
 
     let result;
-    let threadId = context.propsValue.threadId?.trim() || undefined;
+    const suppliedThreadId = context.propsValue.threadId?.trim() || undefined;
+    let threadId = suppliedThreadId;
     try {
       if (!threadId) {
         threadId = await alvysChatApi.createThread(connection);
       }
       const parentKey = `alvys-intel-chat-thread:${threadId}`;
-      const parentMessageId = (await context.store.get<number>(parentKey)) ?? 0;
+      let parentMessageId = (await context.store.get<number>(parentKey)) ?? undefined;
+      if (parentMessageId === undefined && suppliedThreadId) {
+        // Thread created outside this flow (or store lost) — recover the last
+        // message id from the thread itself so the turn attaches correctly.
+        parentMessageId = await alvysChatApi.getThreadLastMessageId(connection, threadId);
+      }
 
       result = await alvysChatApi.askAgent({
         connection,
         threadId,
         agentName,
         messages: [{ role: 'user', content: redactedPrompt }],
-        parentMessageId,
+        parentMessageId: parentMessageId ?? 0,
         llmModel,
         onText: async (accumulated) => {
           await context.output.update({ data: { text: accumulated } });

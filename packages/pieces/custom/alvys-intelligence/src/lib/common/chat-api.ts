@@ -120,6 +120,40 @@ async function createThread(connection: ChatConnection): Promise<string> {
   return String(json.threadId);
 }
 
+// Snowflake message ids arrive as numbers or numeric strings depending on path.
+function toFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+async function getThreadLastMessageId(
+  connection: ChatConnection,
+  threadId: string,
+): Promise<number | undefined> {
+  const res = await fetch(
+    `${connection.baseUrl}/api/chat/threads/${encodeURIComponent(threadId)}`,
+    {
+      method: 'GET',
+      headers: buildHeaders(connection, 'application/json'),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`Thread lookup failed (HTTP ${res.status}): ${await readErrorBody(res)}`);
+  }
+  const json = (await res.json()) as { messages?: unknown[] };
+  const ids = (json.messages ?? [])
+    .map((message) => {
+      const obj = (message ?? {}) as Record<string, unknown>;
+      return toFiniteNumber(obj['snowflakeMessageId'] ?? obj['message_id']);
+    })
+    .filter((id): id is number => id !== undefined);
+  return ids.length > 0 ? Math.max(...ids) : undefined;
+}
+
 function tryParseJson(data: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(data) as unknown;
@@ -194,8 +228,9 @@ async function consumeChatStream(input: {
       }
       case 'metadata': {
         const parsed = tryParseJson(evt.data);
-        if (parsed?.['role'] === 'assistant' && typeof parsed['message_id'] === 'number') {
-          result.assistantMessageId = parsed['message_id'];
+        const messageId = toFiniteNumber(parsed?.['message_id']);
+        if (parsed?.['role'] === 'assistant' && messageId !== undefined) {
+          result.assistantMessageId = messageId;
         }
         return;
       }
@@ -270,6 +305,7 @@ export const alvysChatApi = {
   listAgents,
   listModels,
   createThread,
+  getThreadLastMessageId,
   askAgent,
 };
 
