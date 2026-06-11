@@ -6,7 +6,7 @@ import {
   EffectiveConfig,
 } from '../../runtime/effective-config';
 import { readAuthProps, AlvysIntelligenceAuthProps } from '../../runtime/key-mapping';
-import { bemProvider, DocumentPrimitive } from '../../runtime/providers/bem';
+import { BemCall, bemProvider, DocumentPrimitive, EnsureWorkflowParams } from '../../runtime/providers/bem';
 import { readStepAdvanced } from './advanced-prop';
 
 type StoreLike = {
@@ -55,6 +55,55 @@ async function resolveWorkflowName({
     await store.put(cacheKey, flowName);
   }
   return bemProvider.workflowNameFor({ flowName, stepName, primitive });
+}
+
+function configHashFor(ensure: EnsureWorkflowParams): string {
+  return JSON.stringify([
+    ensure.primitive,
+    ensure.displayName,
+    ensure.extractDescription ?? null,
+    ensure.extractSchemaProperties ?? null,
+    ensure.classifications ?? null,
+  ]);
+}
+
+/**
+ * Provision-then-call with config drift handling:
+ *  - first run for a step provisions the workflow and caches a config hash;
+ *  - when the step's schema-affecting inputs change (custom references,
+ *    classification set), the upstream function/workflow is upserted to a new
+ *    version before calling;
+ *  - if the workflow was deleted upstream, the call's not-found error triggers
+ *    one re-provision + retry.
+ */
+async function callDocumentWorkflow({
+  store,
+  ensure,
+  call,
+}: {
+  store: StoreLike;
+  ensure: EnsureWorkflowParams;
+  call: Parameters<typeof bemProvider.callWorkflowAndAwait>[0];
+}): Promise<BemCall> {
+  const hash = configHashFor(ensure);
+  const cacheKey = `alvys.intelligence.bem.cfg.${ensure.workflowName}`;
+  const cached = await store.get<string>(cacheKey);
+  if (cached !== hash) {
+    await bemProvider.ensureDocumentWorkflow({
+      ...ensure,
+      updateExisting: cached !== null && cached !== hash,
+    });
+    await store.put(cacheKey, hash);
+  }
+
+  try {
+    return await bemProvider.callWorkflowAndAwait(call);
+  } catch (err) {
+    if (!bemProvider.isMissingWorkflowError(err)) throw err;
+    await bemProvider.ensureDocumentWorkflow(ensure);
+    await store.put(cacheKey, hash);
+    return bemProvider.callWorkflowAndAwait(call);
+  }
 }
 
 /**
@@ -132,7 +181,7 @@ async function begin({
   };
 }
 
-export const documentCall = { begin, resolveWorkflowName };
+export const documentCall = { begin, resolveWorkflowName, callDocumentWorkflow };
 
 export type DocumentCallContext = {
   auth: AlvysIntelligenceAuthProps;

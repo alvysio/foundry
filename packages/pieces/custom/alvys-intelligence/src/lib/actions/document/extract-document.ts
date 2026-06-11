@@ -116,24 +116,35 @@ export const extractDocument = createAction({
       [etResult.data, context.propsValue.entityId, dtResult.data].filter(Boolean).join('-') ||
       undefined;
 
+    const customRefProperties: Record<string, { type: string; description: string }> = {};
+    for (const [field, description] of Object.entries(customRefs)) {
+      customRefProperties[field] = { type: 'string', description: String(description ?? field) };
+    }
+
     try {
-      await bemProvider.ensureDocumentWorkflow({
-        apiKey: call.apiKey,
-        baseUrl: call.baseUrl,
-        workflowName,
-        primitive: 'extract',
-        displayName: `Alvys Extract — ${context.step.name}`,
-        extractDescription: `Structured data extracted from a transportation document of type "${dtResult.data}".`,
-        extractSchemaHints: customRefs,
-      });
-      const result = await bemProvider.callWorkflowAndAwait({
-        apiKey: call.apiKey,
-        baseUrl: call.baseUrl,
-        workflowName,
-        callReferenceId,
-        fileBase64: file.base64,
-        fileName: file.filename,
-        timeoutMs: call.config.documentTimeoutMs,
+      const result = await documentCall.callDocumentWorkflow({
+        store: context.store,
+        ensure: {
+          apiKey: call.apiKey,
+          baseUrl: call.baseUrl,
+          workflowName,
+          primitive: 'extract',
+          displayName: `Alvys Extract — ${context.step.name}`,
+          extractDescription: `Structured data extracted from a transportation document of type "${dtResult.data}".`,
+          extractSchemaProperties: {
+            ...documentPipeline.canonicalFieldsFor(dtResult.data),
+            ...customRefProperties,
+          },
+        },
+        call: {
+          apiKey: call.apiKey,
+          baseUrl: call.baseUrl,
+          workflowName,
+          callReferenceId,
+          fileBase64: file.base64,
+          fileName: file.filename,
+          timeoutMs: call.config.documentTimeoutMs,
+        },
       });
       await call.recordSuccess();
 

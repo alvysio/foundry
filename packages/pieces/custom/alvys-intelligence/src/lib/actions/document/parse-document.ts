@@ -64,21 +64,24 @@ export const parseDocument = createAction({
     const file = context.propsValue.file;
 
     try {
-      await bemProvider.ensureDocumentWorkflow({
-        apiKey: call.apiKey,
-        baseUrl: call.baseUrl,
-        workflowName,
-        primitive: 'parse',
-        displayName: `Alvys Parse — ${context.step.name}`,
-      });
-      const result = await bemProvider.callWorkflowAndAwait({
-        apiKey: call.apiKey,
-        baseUrl: call.baseUrl,
-        workflowName,
-        callReferenceId,
-        fileBase64: file.base64,
-        fileName: file.filename,
-        timeoutMs: call.config.documentTimeoutMs,
+      const result = await documentCall.callDocumentWorkflow({
+        store: context.store,
+        ensure: {
+          apiKey: call.apiKey,
+          baseUrl: call.baseUrl,
+          workflowName,
+          primitive: 'parse',
+          displayName: `Alvys Parse — ${context.step.name}`,
+        },
+        call: {
+          apiKey: call.apiKey,
+          baseUrl: call.baseUrl,
+          workflowName,
+          callReferenceId,
+          fileBase64: file.base64,
+          fileName: file.filename,
+          timeoutMs: call.config.documentTimeoutMs,
+        },
       });
 
       let parsedContent: Record<string, unknown> | null = bemProvider.readParseOutput(result).content;

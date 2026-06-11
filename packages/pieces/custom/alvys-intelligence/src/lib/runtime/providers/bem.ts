@@ -92,11 +92,7 @@ function workflowNameFor({
 
 function functionBodyFor(params: EnsureWorkflowParams): DocumentFunctionBody {
   switch (params.primitive) {
-    case 'extract': {
-      const properties: Record<string, unknown> = {};
-      for (const [field, description] of Object.entries(params.extractSchemaHints ?? {})) {
-        properties[field] = { type: 'string', description: String(description ?? field) };
-      }
+    case 'extract':
       return {
         type: 'extract',
         displayName: params.displayName,
@@ -104,26 +100,42 @@ function functionBodyFor(params: EnsureWorkflowParams): DocumentFunctionBody {
         outputSchema: {
           type: 'object',
           description: params.extractDescription ?? 'Structured data extracted from a transportation document.',
-          properties,
+          properties: params.extractSchemaProperties ?? {},
           additionalProperties: true,
         },
       };
-    }
-    case 'classify':
+    // The native classify function type is a router: its choice is only
+    // model-driven when the workflow has destination edges per classification
+    // (verified against the live API 2026-06-10 — a single-node classify
+    // workflow echoes the first classification regardless of content).
+    // Single-label classification is therefore provisioned as an extract
+    // function with an enum field, which classified both test documents
+    // correctly. A user-supplied Workflow Override pointing at a real
+    // edge-routed classify workflow is still honored by readClassifyOutput.
+    case 'classify': {
+      const classifications = params.classifications ?? [];
+      const criteria = classifications.map((c) => `${c.name} = ${c.description}`).join(' ');
       return {
-        type: 'classify',
+        type: 'extract',
         displayName: params.displayName,
-        description:
-          'Classify transportation documents by type so downstream automation can branch per document type.',
-        classifications: [
-          ...(params.classifications ?? []).map((c) => ({ name: c.name, description: c.description })),
-          {
-            name: 'other',
-            description: 'Fallback for documents that do not match any known transportation document type.',
-            isErrorFallback: true,
+        outputSchemaName: `${params.workflowName}-schema`,
+        outputSchema: {
+          type: 'object',
+          properties: {
+            documentType: {
+              type: 'string',
+              enum: [...classifications.map((c) => c.name), 'other'],
+              description: `The single best matching document type. ${criteria} other = none of these.`,
+            },
+            confidence: {
+              type: 'number',
+              description: 'Confidence between 0 and 1 that documentType is correct.',
+            },
           },
-        ],
+          required: ['documentType'],
+        },
       };
+    }
     case 'parse':
       return {
         type: 'parse',
@@ -135,17 +147,20 @@ function functionBodyFor(params: EnsureWorkflowParams): DocumentFunctionBody {
 
 /**
  * Idempotently provision the single-node workflow backing a document step.
- * Existing workflow → no-op (no config churn on the hot path). Missing →
- * upsert function + workflow named after the Activepieces flow/step; upsert
- * semantics make concurrent provisioning safe.
+ * Existing workflow → no-op (no config churn on the hot path) unless
+ * `updateExisting` is set, in which case function + workflow are upserted to
+ * the supplied configuration (new version upstream). Upsert semantics make
+ * concurrent provisioning safe.
  */
 async function ensureDocumentWorkflow(params: EnsureWorkflowParams): Promise<{ created: boolean }> {
   const client = createClient(params);
-  try {
-    await client.workflows.retrieve(params.workflowName);
-    return { created: false };
-  } catch (err) {
-    if (!(err instanceof NotFoundError)) throw err;
+  if (!params.updateExisting) {
+    try {
+      await client.workflows.retrieve(params.workflowName);
+      return { created: false };
+    } catch (err) {
+      if (!(err instanceof NotFoundError)) throw err;
+    }
   }
 
   const functionName = `${params.workflowName}-fn`;
@@ -262,10 +277,15 @@ function readExtractOutput(call: Call): { content: Record<string, unknown>; conf
 }
 
 function readClassifyOutput(call: Call): { choice: string | undefined; confidence: number | undefined } {
-  const output = (call.outputs ?? []).find((o) => o.eventType === 'classify');
-  const choice =
-    output && 'choice' in output && typeof output.choice === 'string' ? output.choice : undefined;
-  return { choice, confidence: eventConfidence(output) };
+  const classifyEvent = (call.outputs ?? []).find((o) => o.eventType === 'classify');
+  if (classifyEvent && 'choice' in classifyEvent && typeof classifyEvent.choice === 'string') {
+    return { choice: classifyEvent.choice, confidence: eventConfidence(classifyEvent) };
+  }
+  const { content, confidence } = readExtractOutput(call);
+  const choice = typeof content['documentType'] === 'string' ? content['documentType'] : undefined;
+  const extractedConfidence =
+    typeof content['confidence'] === 'number' ? content['confidence'] : confidence;
+  return { choice, confidence: extractedConfidence };
 }
 
 function readParseOutput(call: Call): { content: Record<string, unknown> | null } {
@@ -290,8 +310,13 @@ function resolveBaseUrl({ override, environment }: { override?: string; environm
   return DEFAULT_BASE_URL_BY_ENVIRONMENT[environment] ?? DEFAULT_BASE_URL_BY_ENVIRONMENT['production'];
 }
 
+function isMissingWorkflowError(err: unknown): boolean {
+  return err instanceof NotFoundError;
+}
+
 export const bemProvider = {
   ensureDocumentWorkflow,
+  isMissingWorkflowError,
   callWorkflowAndAwait,
   fsQuery,
   readExtractOutput,
@@ -310,8 +335,9 @@ export type EnsureWorkflowParams = {
   workflowName: string;
   primitive: DocumentPrimitive;
   displayName: string;
+  updateExisting?: boolean;
   extractDescription?: string;
-  extractSchemaHints?: Record<string, unknown>;
+  extractSchemaProperties?: Record<string, { type: string; description: string }>;
   classifications?: Array<{ name: string; description: string }>;
 };
 

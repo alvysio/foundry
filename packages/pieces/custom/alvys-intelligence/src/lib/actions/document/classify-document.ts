@@ -3,6 +3,7 @@ import { alvysIntelligenceAuth } from '../../auth';
 import { bemProvider } from '../../runtime/providers/bem';
 import { advancedProp } from '../common/advanced-prop';
 import { documentCall } from '../common/document-call';
+import { documentPipeline } from '../../runtime/document-pipeline';
 
 const SUPPORTED_TYPES: { label: string; value: string }[] = [
   { label: 'POD (Proof of Delivery)', value: 'pod' },
@@ -82,25 +83,25 @@ export const classifyDocument = createAction({
     const minConfidence = context.propsValue.minConfidence ?? 0.6;
 
     try {
-      await bemProvider.ensureDocumentWorkflow({
-        apiKey: call.apiKey,
-        baseUrl: call.baseUrl,
-        workflowName,
-        primitive: 'classify',
-        displayName: `Alvys Classify — ${context.step.name}`,
-        classifications: SUPPORTED_TYPES.map((t) => ({
-          name: t.value,
-          description: `Transportation document: ${t.label}.`,
-        })),
-      });
-      const result = await bemProvider.callWorkflowAndAwait({
-        apiKey: call.apiKey,
-        baseUrl: call.baseUrl,
-        workflowName,
-        callReferenceId: context.propsValue.callReferenceId?.trim() || undefined,
-        fileBase64: file.base64,
-        fileName: file.filename,
-        timeoutMs: call.config.documentTimeoutMs,
+      const result = await documentCall.callDocumentWorkflow({
+        store: context.store,
+        ensure: {
+          apiKey: call.apiKey,
+          baseUrl: call.baseUrl,
+          workflowName,
+          primitive: 'classify',
+          displayName: `Alvys Classify — ${context.step.name}`,
+          classifications: [...documentPipeline.classificationCriteria()],
+        },
+        call: {
+          apiKey: call.apiKey,
+          baseUrl: call.baseUrl,
+          workflowName,
+          callReferenceId: context.propsValue.callReferenceId?.trim() || undefined,
+          fileBase64: file.base64,
+          fileName: file.filename,
+          timeoutMs: call.config.documentTimeoutMs,
+        },
       });
       await call.recordSuccess();
 
@@ -130,5 +131,3 @@ export const classifyDocument = createAction({
     }
   },
 });
-
-export const ROUTABLE_DOCUMENT_TYPES = SUPPORTED_TYPES;

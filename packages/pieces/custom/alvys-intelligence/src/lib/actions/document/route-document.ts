@@ -3,7 +3,7 @@ import { alvysIntelligenceAuth } from '../../auth';
 import { bemProvider } from '../../runtime/providers/bem';
 import { advancedProp } from '../common/advanced-prop';
 import { documentCall } from '../common/document-call';
-import { ROUTABLE_DOCUMENT_TYPES } from './classify-document';
+import { documentPipeline } from '../../runtime/document-pipeline';
 
 /**
  * Convenience action: classify + return a routing key suitable for an AP Router
@@ -60,24 +60,24 @@ export const routeDocument = createAction({
     });
 
     try {
-      await bemProvider.ensureDocumentWorkflow({
-        apiKey: call.apiKey,
-        baseUrl: call.baseUrl,
-        workflowName,
-        primitive: 'classify',
-        displayName: `Alvys Route — ${context.step.name}`,
-        classifications: ROUTABLE_DOCUMENT_TYPES.map((t) => ({
-          name: t.value,
-          description: `Transportation document: ${t.label}.`,
-        })),
-      });
-      const result = await bemProvider.callWorkflowAndAwait({
-        apiKey: call.apiKey,
-        baseUrl: call.baseUrl,
-        workflowName,
-        fileBase64: file.base64,
-        fileName: file.filename,
-        timeoutMs: call.config.documentTimeoutMs,
+      const result = await documentCall.callDocumentWorkflow({
+        store: context.store,
+        ensure: {
+          apiKey: call.apiKey,
+          baseUrl: call.baseUrl,
+          workflowName,
+          primitive: 'classify',
+          displayName: `Alvys Route — ${context.step.name}`,
+          classifications: [...documentPipeline.classificationCriteria()],
+        },
+        call: {
+          apiKey: call.apiKey,
+          baseUrl: call.baseUrl,
+          workflowName,
+          fileBase64: file.base64,
+          fileName: file.filename,
+          timeoutMs: call.config.documentTimeoutMs,
+        },
       });
       await call.recordSuccess();
 
