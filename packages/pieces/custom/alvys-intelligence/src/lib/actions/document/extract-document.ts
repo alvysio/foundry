@@ -4,7 +4,7 @@ import { DocumentTypeSchema, EntityTypeSchema } from '../../runtime/zod-schemas'
 import { bemProvider } from '../../runtime/providers/bem';
 import { advancedProp } from '../common/advanced-prop';
 import { documentCall } from '../common/document-call';
-import { documentPipeline, WORKFLOW_ID_BY_DOCTYPE } from '../../runtime/document-pipeline';
+import { documentPipeline } from '../../runtime/document-pipeline';
 
 export const extractDocument = createAction({
   auth: alvysIntelligenceAuth,
@@ -79,7 +79,7 @@ export const extractDocument = createAction({
     workflowName: Property.ShortText({
       displayName: 'Workflow Override',
       description:
-        'Optional document-workflow name. Leave blank to use the Alvys workflow registered for the selected document type.',
+        'Optional document-workflow name. Leave blank to use the workflow provisioned automatically for this flow and step.',
       required: false,
     }),
     advanced: advancedProp,
@@ -101,19 +101,31 @@ export const extractDocument = createAction({
       unavailableMessage: 'Document extraction is temporarily unavailable. Retry shortly.',
     });
 
-    const workflowName =
-      context.propsValue.workflowName?.trim() || documentPipeline.workflowIdFor(dtResult.data);
-    if (!workflowName) {
-      throw new Error('No extraction pipeline is configured for the selected document type.');
-    }
+    const workflowName = await documentCall.resolveWorkflowName({
+      flows: context.flows,
+      stepName: context.step.name,
+      store: context.store,
+      primitive: 'extract',
+      override: context.propsValue.workflowName,
+    });
 
     const file = context.propsValue.file;
+    const customRefs = (context.propsValue.customReferences ?? {}) as Record<string, unknown>;
     const callReferenceId =
       context.propsValue.callReferenceId?.trim() ||
       [etResult.data, context.propsValue.entityId, dtResult.data].filter(Boolean).join('-') ||
       undefined;
 
     try {
+      await bemProvider.ensureDocumentWorkflow({
+        apiKey: call.apiKey,
+        baseUrl: call.baseUrl,
+        workflowName,
+        primitive: 'extract',
+        displayName: `Alvys Extract — ${context.step.name}`,
+        extractDescription: `Structured data extracted from a transportation document of type "${dtResult.data}".`,
+        extractSchemaHints: customRefs,
+      });
       const result = await bemProvider.callWorkflowAndAwait({
         apiKey: call.apiKey,
         baseUrl: call.baseUrl,
@@ -125,8 +137,7 @@ export const extractDocument = createAction({
       });
       await call.recordSuccess();
 
-      const { content, output } = bemProvider.readExtractOutput(result);
-      const customRefs = (context.propsValue.customReferences ?? {}) as Record<string, unknown>;
+      const { content, confidence } = bemProvider.readExtractOutput(result);
       const merged = documentPipeline.mergeWithCustomReferences({
         fields: content,
         customReferenceSchema: customRefs,
@@ -139,7 +150,8 @@ export const extractDocument = createAction({
         status: result.status,
         callId: result.callID,
         callReferenceId: callReferenceId ?? null,
-        confidence: output?.confidence ?? null,
+        workflowName,
+        confidence: confidence ?? null,
         data: merged.canonical,
         customReferences: merged.customReferences,
         rateLimit: call.rateLimit,
@@ -155,5 +167,3 @@ export const extractDocument = createAction({
     }
   },
 });
-
-export { WORKFLOW_ID_BY_DOCTYPE };

@@ -3,7 +3,7 @@ import { alvysIntelligenceAuth } from '../../auth';
 import { bemProvider } from '../../runtime/providers/bem';
 import { advancedProp } from '../common/advanced-prop';
 import { documentCall } from '../common/document-call';
-import { documentPipeline } from '../../runtime/document-pipeline';
+import { ROUTABLE_DOCUMENT_TYPES } from './classify-document';
 
 /**
  * Convenience action: classify + return a routing key suitable for an AP Router
@@ -52,20 +52,37 @@ export const routeDocument = createAction({
     const fallback = (context.propsValue.fallback ?? 'other').trim() || 'other';
     const minConfidence = context.propsValue.minConfidence ?? 0.6;
     const file = context.propsValue.file;
+    const workflowName = await documentCall.resolveWorkflowName({
+      flows: context.flows,
+      stepName: context.step.name,
+      store: context.store,
+      primitive: 'classify',
+    });
 
     try {
+      await bemProvider.ensureDocumentWorkflow({
+        apiKey: call.apiKey,
+        baseUrl: call.baseUrl,
+        workflowName,
+        primitive: 'classify',
+        displayName: `Alvys Route — ${context.step.name}`,
+        classifications: ROUTABLE_DOCUMENT_TYPES.map((t) => ({
+          name: t.value,
+          description: `Transportation document: ${t.label}.`,
+        })),
+      });
       const result = await bemProvider.callWorkflowAndAwait({
         apiKey: call.apiKey,
         baseUrl: call.baseUrl,
-        workflowName: documentPipeline.classificationWorkflowId(),
+        workflowName,
         fileBase64: file.base64,
         fileName: file.filename,
         timeoutMs: call.config.documentTimeoutMs,
       });
       await call.recordSuccess();
 
-      const { choice, output } = bemProvider.readClassifyOutput(result);
-      const confidence = output?.confidence ?? null;
+      const { choice, confidence: rawConfidence } = bemProvider.readClassifyOutput(result);
+      const confidence = rawConfidence ?? null;
       const detectedType = choice ?? fallback;
       const routeKey = confidence === null || confidence >= minConfidence ? detectedType : fallback;
 
@@ -74,6 +91,7 @@ export const routeDocument = createAction({
         detectedType,
         confidence,
         callId: result.callID,
+        workflowName,
         rateLimit: call.rateLimit,
       };
     } catch (err) {

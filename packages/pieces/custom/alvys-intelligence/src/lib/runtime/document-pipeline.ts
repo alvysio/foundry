@@ -1,58 +1,16 @@
 /**
- * Document pipeline registry — Alvys-branded pipeline definitions per document
- * type. Each document type maps to a named pipeline (classify → schema mapper →
- * tenant-reference merger). Pipelines are versioned independently per doctype;
- * callers reference them via the Alvys-shaped `workflowId` returned by
- * `workflowIdFor()`. Upstream provider identity is confined to the
- * `runtime/providers/bem.ts` module — this file only emits Alvys ids.
- *
- * The mapping is intentionally a constant in code (no remote fetch) — every
- * piece sandbox sees the same pipeline catalog without an extra round-trip.
+ * Document pipeline helpers — Alvys-shaped post-processing of extracted
+ * fields. Upstream workflows are provisioned per flow/step at runtime (see
+ * `runtime/providers/bem.ts`); this module only handles splitting extractor
+ * output into the canonical schema and tenant custom-references.
  */
-
-export const WORKFLOW_ID_BY_DOCTYPE: Readonly<Record<string, string>> = {
-  pod: 'alvys-pod-extract-v1',
-  ratecon: 'alvys-ratecon-extract-v1',
-  bol: 'alvys-bol-extract-v1',
-  customer_invoice: 'alvys-customer-invoice-extract-v1',
-  carrier_invoice: 'alvys-carrier-invoice-extract-v1',
-  coi: 'alvys-coi-extract-v1',
-  mvr: 'alvys-mvr-extract-v1',
-  dac: 'alvys-dac-extract-v1',
-  ifta: 'alvys-ifta-extract-v1',
-  lumper_receipt: 'alvys-lumper-extract-v1',
-  scale_ticket: 'alvys-scale-extract-v1',
-  accessorial_receipt: 'alvys-accessorial-extract-v1',
-  edi_204_image: 'alvys-edi204-extract-v1',
-  other: 'alvys-generic-extract-v1',
-};
-
-export const CLASSIFICATION_WORKFLOW_ID = 'alvys-document-classify-v1';
-
-export const PARSE_WORKFLOW_ID = 'alvys-document-parse-v1';
 
 type MergeResult = {
   canonical: Record<string, unknown>;
   customReferences: Record<string, unknown>;
 };
 
-function isStringRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 export const documentPipeline = {
-  workflowIdFor(documentType: string): string | undefined {
-    return WORKFLOW_ID_BY_DOCTYPE[documentType];
-  },
-
-  classificationWorkflowId(): string {
-    return CLASSIFICATION_WORKFLOW_ID;
-  },
-
-  parseWorkflowId(): string {
-    return PARSE_WORKFLOW_ID;
-  },
-
   /**
    * Split the upstream-extracted field set into:
    *   - canonical: fields that match the doc-type's well-known schema.
@@ -91,7 +49,6 @@ export const documentPipeline = {
       }
     }
 
-    void isStringRecord;
     return { canonical, customReferences };
   },
 };

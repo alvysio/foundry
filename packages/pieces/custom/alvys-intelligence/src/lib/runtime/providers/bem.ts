@@ -1,95 +1,168 @@
 /**
- * BEM document-intelligence provider — direct wrapper over the BEM v3 API.
+ * BEM document-intelligence provider — wraps the official `bem-ai-sdk`
+ * TypeScript client (https://github.com/bem-team/bem-typescript-sdk).
  *
- * Internal-only. Action code consumes the normalized shapes exported here and
- * never builds BEM URLs or reads raw call objects itself. Synchronous mode is
- * used for every call (`wait=true`, ≤30s server-side wait budget) with an
- * automatic polling fallback on HTTP 202 so callers get a terminal result
- * within the configured document timeout. See https://docs.bem.ai/guide/synchronous-mode.
+ * Internal-only. The upstream vendor identity is confined to this module; the
+ * action layer consumes the normalized shapes exported here and never names
+ * the vendor in any user-facing string. Synchronous mode is used for every
+ * call (`wait=true`, ≤30s server-side wait budget) with the SDK's
+ * `waitForCall` polling fallback so callers get a terminal result within the
+ * configured document timeout. See https://docs.bem.ai/guide/synchronous-mode.
+ *
+ * Workflows are provisioned on demand: `ensureDocumentWorkflow` creates a
+ * single-node workflow (function + graph) named after the Activepieces flow
+ * and step that triggered it, so every document step has a matching upstream
+ * workflow it can call. See https://docs.bem.ai/guide/system-overview.
  */
 
-import { httpClient, HttpMethod } from '@activepieces/pieces-common';
+import Bem, {
+  CallFailedError,
+  CallTimeoutError,
+  NotFoundError,
+  upsertFunction,
+  upsertWorkflow,
+  waitForCall,
+} from 'bem-ai-sdk';
+import type { Call } from 'bem-ai-sdk/resources/calls';
+import type { FNavigateParams } from 'bem-ai-sdk/resources/fs';
+import type { FunctionCreateParams } from 'bem-ai-sdk/resources/functions/functions';
+import type { Event as BemEvent, InputType } from 'bem-ai-sdk/resources/outputs';
+
+type DocumentFunctionBody =
+  | Omit<FunctionCreateParams.CreateExtractFunction, 'functionName'>
+  | Omit<FunctionCreateParams.CreateClassifyFunction, 'functionName'>
+  | Omit<FunctionCreateParams.CreateParseFunction, 'functionName'>;
 
 const DEFAULT_BASE_URL_BY_ENVIRONMENT: Readonly<Record<string, string>> = {
   production: 'https://api.bem.ai',
   qa: 'https://api.bem.ai',
 };
 
-// Server stops waiting at 30s; poll cadence for the 202 fallback path.
-const POLL_INTERVAL_MS = 2000;
+// Client timeout must exceed the 30s server-side wait budget (TLS + network overhead).
+const CLIENT_TIMEOUT_MS = 35_000;
 
-function inferInputType(fileName: string): string {
+const MAIN_NODE_NAME = 'main';
+
+function createClient({ apiKey, baseUrl }: { apiKey: string; baseUrl: string }): Bem {
+  return new Bem({ apiKey, baseURL: baseUrl, timeout: CLIENT_TIMEOUT_MS });
+}
+
+function inferInputType(fileName: string): InputType {
   const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
-  const byExt: Record<string, string> = {
+  const byExt: Record<string, InputType> = {
     pdf: 'pdf',
     png: 'png',
     jpg: 'jpeg',
     jpeg: 'jpeg',
-    tif: 'tiff',
-    tiff: 'tiff',
+    webp: 'webp',
+    heic: 'heic',
+    heif: 'heif',
     csv: 'csv',
+    xls: 'xls',
     xlsx: 'xlsx',
-    xls: 'xlsx',
     docx: 'docx',
     txt: 'text',
+    html: 'html',
+    json: 'json',
+    xml: 'xml',
     eml: 'email',
   };
   return byExt[ext] ?? 'pdf';
 }
 
-function readErrorMessages(call: BemCall): string[] {
-  const fromErrors = (call.errors ?? []).map((e) => e.errorMessage ?? e.errorCode ?? 'Unknown upstream error');
-  const fromOutputs = (call.outputs ?? [])
-    .filter((o) => o.eventType === 'error')
-    .map((o) => o.errorMessage ?? o.errorCode ?? 'Unknown upstream function error');
-  return [...fromErrors, ...fromOutputs];
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
 }
 
-async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function workflowNameFor({
+  flowName,
+  stepName,
+  primitive,
+}: {
+  flowName: string;
+  stepName: string;
+  primitive: DocumentPrimitive;
+}): string {
+  return ['alvys', slugify(flowName), slugify(stepName), primitive].filter(Boolean).join('-');
 }
 
-async function callWorkflowSync(params: {
-  apiKey: string;
-  baseUrl: string;
-  workflowName: string;
-  callReferenceId?: string;
-  fileBase64: string;
-  fileName: string;
-}): Promise<BemCall> {
-  const response = await httpClient.sendRequest<{ call?: BemCall } & BemCall>({
-    method: HttpMethod.POST,
-    url: `${params.baseUrl}/v3/workflows/${encodeURIComponent(params.workflowName)}/call?wait=true`,
-    headers: {
-      'x-api-key': params.apiKey,
-      'content-type': 'application/json',
-    },
-    body: {
-      ...(params.callReferenceId ? { callReferenceID: params.callReferenceId } : {}),
-      input: {
-        singleFile: {
-          inputType: inferInputType(params.fileName),
-          inputContent: params.fileBase64,
+function functionBodyFor(params: EnsureWorkflowParams): DocumentFunctionBody {
+  switch (params.primitive) {
+    case 'extract': {
+      const properties: Record<string, unknown> = {};
+      for (const [field, description] of Object.entries(params.extractSchemaHints ?? {})) {
+        properties[field] = { type: 'string', description: String(description ?? field) };
+      }
+      return {
+        type: 'extract',
+        displayName: params.displayName,
+        outputSchemaName: `${params.workflowName}-schema`,
+        outputSchema: {
+          type: 'object',
+          description: params.extractDescription ?? 'Structured data extracted from a transportation document.',
+          properties,
+          additionalProperties: true,
         },
-      },
-    },
-  });
-  return response.body.call ?? response.body;
-}
-
-async function getCall(params: { apiKey: string; baseUrl: string; callId: string }): Promise<BemCall> {
-  const response = await httpClient.sendRequest<{ call?: BemCall } & BemCall>({
-    method: HttpMethod.GET,
-    url: `${params.baseUrl}/v3/calls/${encodeURIComponent(params.callId)}`,
-    headers: { 'x-api-key': params.apiKey },
-  });
-  return response.body.call ?? response.body;
+      };
+    }
+    case 'classify':
+      return {
+        type: 'classify',
+        displayName: params.displayName,
+        description:
+          'Classify transportation documents by type so downstream automation can branch per document type.',
+        classifications: [
+          ...(params.classifications ?? []).map((c) => ({ name: c.name, description: c.description })),
+          {
+            name: 'other',
+            description: 'Fallback for documents that do not match any known transportation document type.',
+            isErrorFallback: true,
+          },
+        ],
+      };
+    case 'parse':
+      return {
+        type: 'parse',
+        displayName: params.displayName,
+        parseConfig: { extractEntities: true, linkAcrossDocuments: true },
+      };
+  }
 }
 
 /**
- * Synchronous call with polling fallback. A 202/pending result is not an
- * error — the call keeps running server-side, so we poll `GET /v3/calls/{id}`
- * until terminal status or the timeout budget is spent.
+ * Idempotently provision the single-node workflow backing a document step.
+ * Existing workflow → no-op (no config churn on the hot path). Missing →
+ * upsert function + workflow named after the Activepieces flow/step; upsert
+ * semantics make concurrent provisioning safe.
+ */
+async function ensureDocumentWorkflow(params: EnsureWorkflowParams): Promise<{ created: boolean }> {
+  const client = createClient(params);
+  try {
+    await client.workflows.retrieve(params.workflowName);
+    return { created: false };
+  } catch (err) {
+    if (!(err instanceof NotFoundError)) throw err;
+  }
+
+  const functionName = `${params.workflowName}-fn`;
+  const functionBody: DocumentFunctionBody = functionBodyFor(params);
+  await upsertFunction(client, functionName, functionBody);
+  const result = await upsertWorkflow(client, params.workflowName, {
+    displayName: params.displayName,
+    mainNodeName: MAIN_NODE_NAME,
+    nodes: [{ name: MAIN_NODE_NAME, function: { name: functionName } }],
+  });
+  return { created: result.created };
+}
+
+/**
+ * Synchronous call with polling fallback. A still-running result is not an
+ * error — the call keeps running server-side, so we poll until terminal
+ * status or the timeout budget is spent.
  */
 async function callWorkflowAndAwait(params: {
   apiKey: string;
@@ -99,66 +172,116 @@ async function callWorkflowAndAwait(params: {
   fileBase64: string;
   fileName: string;
   timeoutMs: number;
-}): Promise<BemCall> {
+}): Promise<Call> {
+  const client = createClient(params);
   const startedAt = Date.now();
-  let call = await callWorkflowSync(params);
+  const response = await client.workflows.call(params.workflowName, {
+    wait: true,
+    ...(params.callReferenceId ? { callReferenceID: params.callReferenceId } : {}),
+    input: {
+      singleFile: {
+        inputType: inferInputType(params.fileName),
+        inputContent: params.fileBase64,
+      },
+    },
+  });
 
-  while (call.status === 'pending' || call.status === 'running') {
-    if (!call.callID) break;
-    if (Date.now() - startedAt + POLL_INTERVAL_MS > params.timeoutMs) {
-      break;
+  let call = response.call;
+  if (!call) {
+    throw new Error(`Document workflow "${params.workflowName}" returned no call data.`);
+  }
+
+  if ((call.status === 'pending' || call.status === 'running') && call.callID) {
+    const remainingMs = Math.max(1000, params.timeoutMs - (Date.now() - startedAt));
+    try {
+      const finished = await waitForCall(client, call.callID, {
+        until: 'completed',
+        timeoutMs: remainingMs,
+      });
+      call = finished.call ?? call;
+    } catch (err) {
+      if (err instanceof CallTimeoutError) {
+        throw new Error(
+          `Document workflow "${params.workflowName}" did not complete within ${params.timeoutMs}ms (call ${err.callID} is still running). Increase the Document Timeout or retry later.`,
+        );
+      }
+      if (err instanceof CallFailedError) {
+        throw new Error(
+          `Document workflow "${params.workflowName}" failed: ${readErrorMessages(err.response.call)}`,
+        );
+      }
+      throw err;
     }
-    await sleep(POLL_INTERVAL_MS);
-    call = await getCall({ apiKey: params.apiKey, baseUrl: params.baseUrl, callId: call.callID });
   }
 
   if (call.status === 'failed') {
-    const messages = readErrorMessages(call);
-    throw new Error(`Document workflow "${params.workflowName}" failed: ${messages.join('; ') || 'no error detail returned'}`);
+    throw new Error(`Document workflow "${params.workflowName}" failed: ${readErrorMessages(call)}`);
   }
   if (call.status !== 'completed') {
     throw new Error(
-      `Document workflow "${params.workflowName}" did not complete within ${params.timeoutMs}ms (call ${call.callID ?? 'unknown'} is still ${call.status}). Increase the Document Timeout or retry later.`,
+      `Document workflow "${params.workflowName}" did not complete within ${params.timeoutMs}ms (call ${call.callID || 'unknown'} is still ${call.status ?? 'pending'}). Increase the Document Timeout or retry later.`,
     );
   }
   return call;
 }
 
-function readExtractOutput(call: BemCall): { content: Record<string, unknown>; output: BemCallOutput | undefined } {
-  const output = (call.outputs ?? []).find(
-    (o) => o.eventType === 'extract' || o.eventType === 'transform' || o.eventType === 'join' || o.eventType === 'analyze',
-  );
-  const content = (output?.transformedContent ?? {}) as Record<string, unknown>;
-  return { content, output };
+function readErrorMessages(call: Call | undefined): string {
+  const messages = (call?.errors ?? [])
+    .map((e) => {
+      if ('errorMessage' in e && typeof e.errorMessage === 'string') return e.errorMessage;
+      if ('errorCode' in e && typeof e.errorCode === 'string') return e.errorCode;
+      return undefined;
+    })
+    .filter((m): m is string => typeof m === 'string');
+  return messages.join('; ') || 'no error detail returned';
 }
 
-function readClassifyOutput(call: BemCall): { choice: string | undefined; output: BemCallOutput | undefined } {
-  const output = (call.outputs ?? []).find((o) => o.eventType === 'classify');
-  const rawChoice = output?.choice;
-  if (typeof rawChoice === 'string') return { choice: rawChoice, output };
-  if (rawChoice && typeof rawChoice === 'object') {
-    const obj = rawChoice as Record<string, unknown>;
-    const name = obj['name'] ?? obj['classification'] ?? obj['choice'];
-    return { choice: typeof name === 'string' ? name : undefined, output };
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function eventContent(event: BemEvent | undefined): Record<string, unknown> {
+  if (event && 'transformedContent' in event && isRecord(event.transformedContent)) {
+    return event.transformedContent;
   }
-  return { choice: undefined, output };
+  return {};
+}
+
+function eventConfidence(event: BemEvent | undefined): number | undefined {
+  if (event && 'confidence' in event && typeof event.confidence === 'number') {
+    return event.confidence;
+  }
+  return undefined;
+}
+
+function readExtractOutput(call: Call): { content: Record<string, unknown>; confidence: number | undefined } {
+  const output = (call.outputs ?? []).find((o) =>
+    ['extract', 'transform', 'join', 'analyze'].includes(o.eventType ?? ''),
+  );
+  return { content: eventContent(output), confidence: eventConfidence(output) };
+}
+
+function readClassifyOutput(call: Call): { choice: string | undefined; confidence: number | undefined } {
+  const output = (call.outputs ?? []).find((o) => o.eventType === 'classify');
+  const choice =
+    output && 'choice' in output && typeof output.choice === 'string' ? output.choice : undefined;
+  return { choice, confidence: eventConfidence(output) };
+}
+
+function readParseOutput(call: Call): { content: Record<string, unknown> | null } {
+  const output = (call.outputs ?? []).find((o) => o.eventType === 'parse');
+  const content = eventContent(output);
+  return { content: Object.keys(content).length > 0 ? content : null };
 }
 
 async function fsQuery(params: {
   apiKey: string;
   baseUrl: string;
-  body: Record<string, unknown>;
+  body: FNavigateParams;
 }): Promise<Record<string, unknown>> {
-  const response = await httpClient.sendRequest<Record<string, unknown>>({
-    method: HttpMethod.POST,
-    url: `${params.baseUrl}/v3/fs`,
-    headers: {
-      'x-api-key': params.apiKey,
-      'content-type': 'application/json',
-    },
-    body: params.body,
-  });
-  return response.body;
+  const client = createClient(params);
+  const result: unknown = await client.fs.navigate(params.body);
+  return isRecord(result) ? result : {};
 }
 
 function resolveBaseUrl({ override, environment }: { override?: string; environment: string }): string {
@@ -168,32 +291,30 @@ function resolveBaseUrl({ override, environment }: { override?: string; environm
 }
 
 export const bemProvider = {
+  ensureDocumentWorkflow,
   callWorkflowAndAwait,
-  getCall,
   fsQuery,
   readExtractOutput,
   readClassifyOutput,
+  readParseOutput,
   resolveBaseUrl,
   inferInputType,
+  workflowNameFor,
 };
 
-export type BemCallOutput = {
-  eventType: string;
-  functionName?: string;
-  transformedContent?: Record<string, unknown>;
-  enrichedContent?: Record<string, unknown>;
-  choice?: unknown;
-  confidence?: number;
-  errorMessage?: string;
-  errorCode?: string;
-  errorDetails?: unknown;
+export type DocumentPrimitive = 'extract' | 'classify' | 'parse';
+
+export type EnsureWorkflowParams = {
+  apiKey: string;
+  baseUrl: string;
+  workflowName: string;
+  primitive: DocumentPrimitive;
+  displayName: string;
+  extractDescription?: string;
+  extractSchemaHints?: Record<string, unknown>;
+  classifications?: Array<{ name: string; description: string }>;
 };
 
-export type BemCall = {
-  callID: string;
-  status: 'completed' | 'pending' | 'running' | 'failed';
-  outputs?: BemCallOutput[];
-  errors?: Array<{ errorMessage?: string; errorCode?: string }>;
-  url?: string;
-  traceUrl?: string;
-};
+export type BemCall = Call;
+export type BemFsParams = FNavigateParams;
+export type BemFsOp = FNavigateParams['op'];

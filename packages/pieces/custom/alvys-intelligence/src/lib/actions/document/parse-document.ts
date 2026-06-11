@@ -3,7 +3,6 @@ import { alvysIntelligenceAuth } from '../../auth';
 import { bemProvider } from '../../runtime/providers/bem';
 import { advancedProp } from '../common/advanced-prop';
 import { documentCall } from '../common/document-call';
-import { documentPipeline } from '../../runtime/document-pipeline';
 
 export const parseDocument = createAction({
   auth: alvysIntelligenceAuth,
@@ -32,7 +31,8 @@ export const parseDocument = createAction({
     }),
     workflowName: Property.ShortText({
       displayName: 'Workflow Override',
-      description: 'Optional document-workflow name. Leave blank to use the Alvys document-parse workflow.',
+      description:
+        'Optional document-workflow name. Leave blank to use the workflow provisioned automatically for this flow and step.',
       required: false,
     }),
     advanced: advancedProp,
@@ -54,11 +54,23 @@ export const parseDocument = createAction({
       unavailableMessage: 'Document parsing is temporarily unavailable. Retry shortly.',
     });
 
-    const workflowName =
-      context.propsValue.workflowName?.trim() || documentPipeline.parseWorkflowId();
+    const workflowName = await documentCall.resolveWorkflowName({
+      flows: context.flows,
+      stepName: context.step.name,
+      store: context.store,
+      primitive: 'parse',
+      override: context.propsValue.workflowName,
+    });
     const file = context.propsValue.file;
 
     try {
+      await bemProvider.ensureDocumentWorkflow({
+        apiKey: call.apiKey,
+        baseUrl: call.baseUrl,
+        workflowName,
+        primitive: 'parse',
+        displayName: `Alvys Parse — ${context.step.name}`,
+      });
       const result = await bemProvider.callWorkflowAndAwait({
         apiKey: call.apiKey,
         baseUrl: call.baseUrl,
@@ -69,13 +81,7 @@ export const parseDocument = createAction({
         timeoutMs: call.config.documentTimeoutMs,
       });
 
-      const parseOutput = (result.outputs ?? []).find((o) => o.eventType === 'parse');
-      const embedded =
-        parseOutput?.transformedContent && Object.keys(parseOutput.transformedContent).length > 0
-          ? parseOutput.transformedContent
-          : null;
-
-      let parsedContent: Record<string, unknown> | null = embedded;
+      let parsedContent: Record<string, unknown> | null = bemProvider.readParseOutput(result).content;
       if (!parsedContent && context.propsValue.fetchParsedContent) {
         parsedContent = await bemProvider.fsQuery({
           apiKey: call.apiKey,
@@ -89,6 +95,7 @@ export const parseDocument = createAction({
         status: result.status,
         callId: result.callID,
         callReferenceId,
+        workflowName,
         fileSystemPath: callReferenceId,
         parsedContent,
         rateLimit: call.rateLimit,

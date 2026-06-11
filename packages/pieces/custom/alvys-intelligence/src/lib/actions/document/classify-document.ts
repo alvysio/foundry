@@ -3,7 +3,6 @@ import { alvysIntelligenceAuth } from '../../auth';
 import { bemProvider } from '../../runtime/providers/bem';
 import { advancedProp } from '../common/advanced-prop';
 import { documentCall } from '../common/document-call';
-import { documentPipeline } from '../../runtime/document-pipeline';
 
 const SUPPORTED_TYPES: { label: string; value: string }[] = [
   { label: 'POD (Proof of Delivery)', value: 'pod' },
@@ -53,7 +52,8 @@ export const classifyDocument = createAction({
     }),
     workflowName: Property.ShortText({
       displayName: 'Workflow Override',
-      description: 'Optional document-workflow name. Leave blank to use the Alvys document-classification workflow.',
+      description:
+        'Optional document-workflow name. Leave blank to use the workflow provisioned automatically for this flow and step.',
       required: false,
     }),
     advanced: advancedProp,
@@ -70,13 +70,29 @@ export const classifyDocument = createAction({
       unavailableMessage: 'Document classification is temporarily unavailable. Retry shortly.',
     });
 
-    const workflowName =
-      context.propsValue.workflowName?.trim() || documentPipeline.classificationWorkflowId();
+    const workflowName = await documentCall.resolveWorkflowName({
+      flows: context.flows,
+      stepName: context.step.name,
+      store: context.store,
+      primitive: 'classify',
+      override: context.propsValue.workflowName,
+    });
     const file = context.propsValue.file;
     const allowed = context.propsValue.allowedTypes;
     const minConfidence = context.propsValue.minConfidence ?? 0.6;
 
     try {
+      await bemProvider.ensureDocumentWorkflow({
+        apiKey: call.apiKey,
+        baseUrl: call.baseUrl,
+        workflowName,
+        primitive: 'classify',
+        displayName: `Alvys Classify — ${context.step.name}`,
+        classifications: SUPPORTED_TYPES.map((t) => ({
+          name: t.value,
+          description: `Transportation document: ${t.label}.`,
+        })),
+      });
       const result = await bemProvider.callWorkflowAndAwait({
         apiKey: call.apiKey,
         baseUrl: call.baseUrl,
@@ -88,8 +104,8 @@ export const classifyDocument = createAction({
       });
       await call.recordSuccess();
 
-      const { choice, output } = bemProvider.readClassifyOutput(result);
-      const confidence = output?.confidence ?? null;
+      const { choice, confidence: rawConfidence } = bemProvider.readClassifyOutput(result);
+      const confidence = rawConfidence ?? null;
 
       let detectedType = choice ?? 'unknown';
       if (allowed && allowed.length > 0 && !allowed.includes(detectedType)) {
@@ -105,6 +121,7 @@ export const classifyDocument = createAction({
         confidence,
         status: result.status,
         callId: result.callID,
+        workflowName,
         rateLimit: call.rateLimit,
       };
     } catch (err) {
@@ -113,3 +130,5 @@ export const classifyDocument = createAction({
     }
   },
 });
+
+export const ROUTABLE_DOCUMENT_TYPES = SUPPORTED_TYPES;

@@ -481,7 +481,7 @@
     },
     "packages/pieces/community/ai": {
       "name": "@activepieces/piece-ai",
-      "version": "0.5.1",
+      "version": "0.4.4",
       "dependencies": {
         "@activepieces/pieces-common": "workspace:*",
         "@activepieces/pieces-framework": "workspace:*",
@@ -8406,7 +8406,7 @@
     },
     "packages/pieces/custom/alvys-intelligence": {
       "name": "@activepieces/piece-alvys-intelligence",
-      "version": "0.3.0",
+      "version": "0.6.0",
       "dependencies": {
         "@activepieces/piece-ai": "workspace:*",
         "@activepieces/pieces-common": "workspace:*",
@@ -8414,6 +8414,7 @@
         "@activepieces/shared": "workspace:*",
         "@ai-sdk/provider-utils": "4.0.24",
         "ai": "6.0.170",
+        "bem-ai-sdk": "0.25.0",
         "tslib": "2.6.2",
         "zod": "4.3.6",
       },
@@ -12661,6 +12662,8 @@
     "bech32": ["bech32@2.0.0", "", {}, "sha512-LcknSilhIGatDAsY1ak2I8VtGaHNhgMSYVxFrGLXv+xLHytaKZKcaUJJUE7qmBr7h33o5YQwP55pMI0xmkpJwg=="],
 
     "before-after-hook": ["before-after-hook@3.0.2", "", {}, "sha512-Nik3Sc0ncrMK4UUdXQmAnRtzmNQTAAXmXIopizwZ1W1t8QmfJj+zL4OA2I7XPTPW5z5TDqv4hRo/JzouDJnX3A=="],
+
+    "bem-ai-sdk": ["bem-ai-sdk@0.25.0", "", {}, "sha512-eUNlnpYvRgZP8zvsrgy0p9qd7vPkiIdVyHuH4C/wQTKCR6QiWXPg8YaSpxKgkajHuhAe8GjgrZLz2owpLdrzMg=="],
 
     "better-sqlite3": ["better-sqlite3@11.10.0", "", { "dependencies": { "bindings": "^1.5.0", "prebuild-install": "^7.1.1" } }, "sha512-EwhOpyXiOEL/lKzHz9AW1msWFNzGc/z+LzeB3/jnFJpxu+th2yqvzsSWas1v9jgs9+xiXJcD5A8CJxAG2TaghQ=="],
 

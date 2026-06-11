@@ -6,7 +6,7 @@ import {
   EffectiveConfig,
 } from '../../runtime/effective-config';
 import { readAuthProps, AlvysIntelligenceAuthProps } from '../../runtime/key-mapping';
-import { bemProvider } from '../../runtime/providers/bem';
+import { bemProvider, DocumentPrimitive } from '../../runtime/providers/bem';
 import { readStepAdvanced } from './advanced-prop';
 
 type StoreLike = {
@@ -15,11 +15,53 @@ type StoreLike = {
   delete: (key: string) => Promise<void>;
 };
 
+type FlowsLike = {
+  current: { id: string };
+  list(): Promise<{ data: Array<{ id: string; version: { displayName: string } }> }>;
+};
+
 /**
- * Shared pre-flight for every BEM-backed document action: credential checks,
- * layered config resolution, per-project sliding-window rate limit, and the
- * shared document circuit breaker. Returns everything the action needs to
- * issue the BEM call plus the breaker bookkeeping helpers.
+ * Derive the upstream document-workflow name for a step: based on the
+ * current flow's display name (cached per flow) and the step name, so each
+ * document step is backed by a workflow that matches the flow it lives in.
+ * An explicit per-step override always wins.
+ */
+async function resolveWorkflowName({
+  flows,
+  stepName,
+  store,
+  primitive,
+  override,
+}: {
+  flows: FlowsLike;
+  stepName: string;
+  store: StoreLike;
+  primitive: DocumentPrimitive;
+  override?: string;
+}): Promise<string> {
+  const trimmedOverride = override?.trim();
+  if (trimmedOverride) return trimmedOverride;
+
+  const flowId = flows.current.id;
+  const cacheKey = `alvys.intelligence.flowname.${flowId}`;
+  let flowName = await store.get<string>(cacheKey);
+  if (!flowName) {
+    try {
+      const page = await flows.list();
+      flowName = page.data.find((f) => f.id === flowId)?.version.displayName ?? flowId;
+    } catch {
+      flowName = flowId;
+    }
+    await store.put(cacheKey, flowName);
+  }
+  return bemProvider.workflowNameFor({ flowName, stepName, primitive });
+}
+
+/**
+ * Shared pre-flight for every document action: credential checks, layered
+ * config resolution, per-project sliding-window rate limit, and the shared
+ * document circuit breaker. Returns everything the action needs to issue the
+ * upstream call plus the breaker bookkeeping helpers.
  */
 async function begin({
   rawAuth,
@@ -90,7 +132,7 @@ async function begin({
   };
 }
 
-export const documentCall = { begin };
+export const documentCall = { begin, resolveWorkflowName };
 
 export type DocumentCallContext = {
   auth: AlvysIntelligenceAuthProps;
