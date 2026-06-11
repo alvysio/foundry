@@ -1,15 +1,9 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
 import { alvysIntelligenceAuth } from '../../auth';
 import { DocumentTypeSchema, EntityTypeSchema } from '../../runtime/zod-schemas';
-import { readAuthProps } from '../../runtime/key-mapping';
-import { circuitBreaker } from '../../runtime/circuit-breaker';
-import { rateLimiter } from '../../runtime/rate-limiter';
-import { documentIntelExtract } from '../../runtime/providers/document-intel';
-import {
-  resolveEffectiveConfig,
-  readConnectionConfigOverrides,
-} from '../../runtime/effective-config';
-import { advancedProp, readStepAdvanced } from '../common/advanced-prop';
+import { bemProvider } from '../../runtime/providers/bem';
+import { advancedProp } from '../common/advanced-prop';
+import { documentCall } from '../common/document-call';
 import { documentPipeline, WORKFLOW_ID_BY_DOCTYPE } from '../../runtime/document-pipeline';
 
 export const extractDocument = createAction({
@@ -17,7 +11,7 @@ export const extractDocument = createAction({
   name: 'extract_document',
   displayName: 'Extract Document',
   description:
-    'Extract Alvys-shaped structured data from a transportation document. Document type drives the schema; tenant custom-references are merged into the result.',
+    'Extract Alvys-shaped structured data from a transportation document via a BEM Extract workflow (synchronous mode). Document type drives the schema; tenant custom-references are merged into the result.',
   props: {
     documentType: Property.StaticDropdown<string>({
       displayName: 'Document Type',
@@ -76,73 +70,65 @@ export const extractDocument = createAction({
       required: false,
       defaultValue: {},
     }),
+    callReferenceId: Property.ShortText({
+      displayName: 'Call Reference Id',
+      description:
+        'Optional idempotency / tracking id forwarded to BEM as callReferenceID. Defaults to a value derived from the linked entity.',
+      required: false,
+    }),
+    workflowName: Property.ShortText({
+      displayName: 'BEM Workflow Override',
+      description:
+        'Optional BEM workflow name. Leave blank to use the Alvys workflow registered for the selected document type.',
+      required: false,
+    }),
     advanced: advancedProp,
   },
   async run(context) {
-    const auth = readAuthProps(context.auth);
-    if (!auth.documentKey) {
-      throw new Error('Document Intelligence Key is not configured on the Alvys Intelligence connection.');
-    }
-    if (!auth.documentBaseUrl?.trim()) {
-      throw new Error(
-        'Document Intelligence Endpoint is not configured on the Alvys Intelligence connection. Set the endpoint URL on the connection.',
-      );
-    }
-
     const dtResult = DocumentTypeSchema.safeParse(context.propsValue.documentType);
     if (!dtResult.success) throw new Error('Invalid Document Type.');
     const etResult = EntityTypeSchema.safeParse(context.propsValue.entityType);
     if (!etResult.success) throw new Error('Invalid Linked Entity Type.');
 
-    const config = await resolveEffectiveConfig({
+    const call = await documentCall.begin({
+      rawAuth: context.auth,
       store: context.store,
       apiUrl: context.server.apiUrl,
       serverToken: context.server.token,
-      connectionConfig: readConnectionConfigOverrides(context.auth),
-      stepConfig: readStepAdvanced(context.propsValue.advanced),
+      projectId: context.project.id,
+      advanced: context.propsValue.advanced,
+      rateKeySuffix: 'extract',
+      unavailableMessage: 'Document extraction is temporarily unavailable. Retry shortly.',
     });
 
-    const tenantKey = context.project.id;
-    const rl = await rateLimiter.checkAndIncrement({
-      store: context.store,
-      storeKey: `alvys.intelligence.${tenantKey}.rl.extract`,
-      config: { maxRequests: config.rateLimitMaxRequests, windowMs: config.rateLimitWindowSec * 1000 },
-    });
-    if (!rl.allowed) {
-      throw new Error(`Rate limit exceeded. Retry in ${Math.ceil(rl.retryAfterMs / 1000)}s.`);
-    }
-
-    const breakerKey = `alvys.intelligence.${tenantKey}.cb.document`;
-    const breakerCheck = await circuitBreaker.checkAllowed({
-      store: context.store,
-      storeKey: breakerKey,
-      config: { failureThreshold: config.circuitFailureThreshold, recoveryWindowMs: config.circuitRecoveryWindowSec * 1000 },
-    });
-    if (!breakerCheck.allowed) {
-      throw new Error('Document extraction is temporarily unavailable. Retry shortly.');
-    }
-
-    const baseUrl = config.documentBaseUrl?.trim() || auth.documentBaseUrl;
-    const workflowId = documentPipeline.workflowIdFor(dtResult.data);
-    if (!workflowId) {
+    const workflowName =
+      context.propsValue.workflowName?.trim() || documentPipeline.workflowIdFor(dtResult.data);
+    if (!workflowName) {
       throw new Error('No extraction pipeline is configured for the selected document type.');
     }
 
     const file = context.propsValue.file;
+    const callReferenceId =
+      context.propsValue.callReferenceId?.trim() ||
+      [etResult.data, context.propsValue.entityId, dtResult.data].filter(Boolean).join('-') ||
+      undefined;
+
     try {
-      const result = await documentIntelExtract({
-        apiKey: auth.documentKey,
-        baseUrl,
-        workflowId,
+      const result = await bemProvider.callWorkflowAndAwait({
+        apiKey: call.apiKey,
+        baseUrl: call.baseUrl,
+        workflowName,
+        callReferenceId,
         fileBase64: file.base64,
         fileName: file.filename,
-        mimeType: 'application/octet-stream',
+        timeoutMs: call.config.documentTimeoutMs,
       });
-      await circuitBreaker.recordSuccess({ store: context.store, storeKey: breakerKey });
+      await call.recordSuccess();
 
+      const { content, output } = bemProvider.readExtractOutput(result);
       const customRefs = (context.propsValue.customReferences ?? {}) as Record<string, unknown>;
       const merged = documentPipeline.mergeWithCustomReferences({
-        fields: result.fields,
+        fields: content,
         customReferenceSchema: customRefs,
       });
 
@@ -151,22 +137,20 @@ export const extractDocument = createAction({
         entityType: etResult.data,
         entityId: context.propsValue.entityId ?? null,
         status: result.status,
-        confidence: result.confidence ?? null,
+        callId: result.callID,
+        callReferenceId: callReferenceId ?? null,
+        confidence: output?.confidence ?? null,
         data: merged.canonical,
         customReferences: merged.customReferences,
-        rateLimit: { remaining: rl.remaining, total: rl.total },
+        rateLimit: call.rateLimit,
         effectiveConfigSummary: {
-          rateLimitMaxRequests: config.rateLimitMaxRequests,
-          circuitFailureThreshold: config.circuitFailureThreshold,
-          documentTimeoutMs: config.documentTimeoutMs,
+          rateLimitMaxRequests: call.config.rateLimitMaxRequests,
+          circuitFailureThreshold: call.config.circuitFailureThreshold,
+          documentTimeoutMs: call.config.documentTimeoutMs,
         },
       };
     } catch (err) {
-      await circuitBreaker.recordFailure({
-        store: context.store,
-        storeKey: breakerKey,
-        config: { failureThreshold: config.circuitFailureThreshold, recoveryWindowMs: config.circuitRecoveryWindowSec * 1000 },
-      });
+      await call.recordFailure();
       throw err;
     }
   },

@@ -4,7 +4,7 @@
  * tenant-reference merger). Pipelines are versioned independently per doctype;
  * callers reference them via the Alvys-shaped `workflowId` returned by
  * `workflowIdFor()`. Upstream provider identity is confined to the
- * `runtime/providers/document-intel.ts` module — this file only emits Alvys ids.
+ * `runtime/providers/bem.ts` module — this file only emits Alvys ids.
  *
  * The mapping is intentionally a constant in code (no remote fetch) — every
  * piece sandbox sees the same pipeline catalog without an extra round-trip.
@@ -29,6 +29,8 @@ export const WORKFLOW_ID_BY_DOCTYPE: Readonly<Record<string, string>> = {
 
 export const CLASSIFICATION_WORKFLOW_ID = 'alvys-document-classify-v1';
 
+export const PARSE_WORKFLOW_ID = 'alvys-document-parse-v1';
+
 type MergeResult = {
   canonical: Record<string, unknown>;
   customReferences: Record<string, unknown>;
@@ -45,6 +47,10 @@ export const documentPipeline = {
 
   classificationWorkflowId(): string {
     return CLASSIFICATION_WORKFLOW_ID;
+  },
+
+  parseWorkflowId(): string {
+    return PARSE_WORKFLOW_ID;
   },
 
   /**
