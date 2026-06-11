@@ -90,17 +90,6 @@ export const searchParsedDocuments = createAction({
     advanced: advancedProp,
   },
   async run(context) {
-    const call = await documentCall.begin({
-      rawAuth: context.auth,
-      store: context.store,
-      apiUrl: context.server.apiUrl,
-      serverToken: context.server.token,
-      projectId: context.project.id,
-      advanced: context.propsValue.advanced,
-      rateKeySuffix: 'fs',
-      unavailableMessage: 'Parsed-document search is temporarily unavailable. Retry shortly.',
-    });
-
     const p = context.propsValue;
     const op = p.op ?? 'grep';
     if (['cat', 'head', 'stat'].includes(op) && !p.path?.trim()) {
@@ -112,6 +101,17 @@ export const searchParsedDocuments = createAction({
     if (op === 'xref' && !p.entityId?.trim()) {
       throw new Error('Operation "xref" requires an Entity Id.');
     }
+
+    const call = await documentCall.begin({
+      rawAuth: context.auth,
+      store: context.store,
+      apiUrl: context.server.apiUrl,
+      serverToken: context.server.token,
+      projectId: context.project.id,
+      advanced: context.propsValue.advanced,
+      rateKeySuffix: 'fs',
+      unavailableMessage: 'Parsed-document search is temporarily unavailable. Retry shortly.',
+    });
 
     const body: Record<string, unknown> = {
       op,

@@ -116,10 +116,9 @@ async function callWorkflowAndAwait(params: {
     const messages = readErrorMessages(call);
     throw new Error(`BEM workflow "${params.workflowName}" failed: ${messages.join('; ') || 'no error detail returned'}`);
   }
-  if (call.status === 'pending' || call.status === 'running') {
-    const callIdDetail = call.callID ? `callID: ${call.callID}` : 'no callID returned';
+  if (call.status !== 'completed') {
     throw new Error(
-      `BEM workflow "${params.workflowName}" did not complete within ${params.timeoutMs}ms (${callIdDetail})`,
+      `BEM workflow "${params.workflowName}" did not complete within ${params.timeoutMs}ms (call ${call.callID ?? 'unknown'} is still ${call.status}). Increase the Document Timeout or retry later.`,
     );
   }
   return call;

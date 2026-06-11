@@ -38,6 +38,11 @@ export const parseDocument = createAction({
     advanced: advancedProp,
   },
   async run(context) {
+    const callReferenceId = context.propsValue.callReferenceId.trim();
+    if (!callReferenceId) {
+      throw new Error('Call Reference Id must not be blank.');
+    }
+
     const call = await documentCall.begin({
       rawAuth: context.auth,
       store: context.store,
@@ -52,10 +57,6 @@ export const parseDocument = createAction({
     const workflowName =
       context.propsValue.workflowName?.trim() || documentPipeline.parseWorkflowId();
     const file = context.propsValue.file;
-    const callReferenceId = context.propsValue.callReferenceId.trim();
-    if (!callReferenceId) {
-      throw new Error('Call Reference Id must not be blank.');
-    }
 
     try {
       const result = await bemProvider.callWorkflowAndAwait({
@@ -67,19 +68,22 @@ export const parseDocument = createAction({
         fileName: file.filename,
         timeoutMs: call.config.documentTimeoutMs,
       });
-      await call.recordSuccess();
 
       const parseOutput = (result.outputs ?? []).find((o) => o.eventType === 'parse');
-      const embedded = parseOutput?.transformedContent ?? null;
+      const embedded =
+        parseOutput?.transformedContent && Object.keys(parseOutput.transformedContent).length > 0
+          ? parseOutput.transformedContent
+          : null;
 
       let parsedContent: Record<string, unknown> | null = embedded;
-      if (!parsedContent && context.propsValue.fetchParsedContent && result.status === 'completed') {
+      if (!parsedContent && context.propsValue.fetchParsedContent) {
         parsedContent = await bemProvider.fsQuery({
           apiKey: call.apiKey,
           baseUrl: call.baseUrl,
           body: { op: 'cat', path: callReferenceId },
         });
       }
+      await call.recordSuccess();
 
       return {
         status: result.status,
