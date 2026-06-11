@@ -84,9 +84,9 @@ export const askAgent = createAction({
       },
     }),
     threadId: Property.ShortText({
-      displayName: 'Thread ID',
+      displayName: 'Thread ID (Optional)',
       description:
-        'Continue an existing Insights chat thread. Leave blank to start a new thread for this run.',
+        'Continue a specific Insights chat thread. Leave blank to use the flow thread — created automatically on first run and reused so every subsequent message keeps the conversation context.',
       required: false,
     }),
     advanced: advancedProp,
@@ -143,14 +143,25 @@ export const askAgent = createAction({
     const suppliedThreadId = context.propsValue.threadId?.trim() || undefined;
     let threadId = suppliedThreadId;
     try {
+      let createdNewThread = false;
       if (!threadId) {
-        threadId = await alvysChatApi.createThread(connection);
+        // One thread per flow: the store defaults to FLOW scope, so every Ask
+        // Agent step in this flow shares the thread and its conversation
+        // history across runs.
+        const flowThreadKey = 'alvys-intel-chat-flow-thread';
+        threadId = (await context.store.get<string>(flowThreadKey)) ?? undefined;
+        if (!threadId) {
+          threadId = await alvysChatApi.createThread(connection);
+          await context.store.put(flowThreadKey, threadId);
+          createdNewThread = true;
+        }
       }
       const parentKey = `alvys-intel-chat-thread:${threadId}`;
       let parentMessageId = (await context.store.get<number>(parentKey)) ?? undefined;
-      if (parentMessageId === undefined && suppliedThreadId) {
-        // Thread created outside this flow (or store lost) — recover the last
-        // message id from the thread itself so the turn attaches correctly.
+      if (parentMessageId === undefined && !createdNewThread) {
+        // Pre-existing thread with no stored parent (created outside this flow
+        // or store lost) — recover the last message id from the thread itself
+        // so the turn attaches correctly.
         parentMessageId = await alvysChatApi.getThreadLastMessageId(connection, threadId);
       }
 
