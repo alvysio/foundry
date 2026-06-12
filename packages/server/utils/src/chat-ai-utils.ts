@@ -87,16 +87,15 @@ function createChatModel({ provider, auth, config, modelId }: {
     }
 }
 
-const THINKING_PROVIDERS = new Set([
-    AIProviderName.ANTHROPIC,
-    AIProviderName.BEDROCK,
-    AIProviderName.OPENROUTER,
-    AIProviderName.ACTIVEPIECES,
-])
-
-function stripThinkingBlocks(messages: ModelMessage[], provider: AIProviderName): ModelMessage[] {
-    if (THINKING_PROVIDERS.has(provider)) return messages
-
+/**
+ * Strips for ALL providers (not just non-thinking ones) because Anthropic rejects
+ * a re-sent `thinking` block whose `signature` didn't survive our DB round-trip /
+ * compaction / truncation reshaping ("Invalid `signature` in `thinking` block"),
+ * and prior-turn reasoning adds nothing the text + tool results don't already carry.
+ * In-flight thinking within one streamText call keeps its intact signature and is
+ * untouched — this only touches the cross-turn history we assemble.
+ */
+function stripThinkingBlocks(messages: ModelMessage[], _provider: AIProviderName): ModelMessage[] {
     const hasThinking = messages.some(
         (msg) => msg.role === 'assistant' && Array.isArray(msg.content)
             && (msg.content as Array<Record<string, unknown>>).some(
@@ -202,6 +201,32 @@ function buildStepParts({ content }: {
                     parts.push({
                         type: PersistedChatPartType.BATCH_PROGRESS,
                         data: (rawOutput as Record<string, unknown>)['batchProgress'] as Record<string, unknown>,
+                    })
+                }
+                if (toolName === 'ap_execute_action' && result) {
+                    const outputRecord = typeof rawOutput === 'object' && rawOutput !== null ? rawOutput as Record<string, unknown> : {}
+                    const meta = typeof outputRecord['_meta'] === 'object' && outputRecord['_meta'] !== null ? outputRecord['_meta'] as Record<string, unknown> : undefined
+                    const connectionLabel = typeof meta?.['connectionLabel'] === 'string' ? meta['connectionLabel'] : undefined
+                    const firstContentText = Array.isArray(outputRecord['content']) && typeof outputRecord['content'][0]?.['text'] === 'string' ? outputRecord['content'][0]['text'] as string : ''
+                    const isAppSuccess = result.type === 'tool-result'
+                        && outputRecord['success'] !== false
+                        && outputRecord['isError'] !== true
+                        && !firstContentText.startsWith('❌')
+                        && !firstContentText.startsWith('⏳')
+                        && !firstContentText.includes('cancelled by user')
+                    const errorText = !isAppSuccess && firstContentText
+                        ? firstContentText
+                        : (result.type === 'tool-error' && typeof result.output === 'string' ? result.output : undefined)
+                    parts.push({
+                        type: PersistedChatPartType.ACTION_RECEIPT,
+                        toolCallId: part.toolCallId ?? '',
+                        actionDisplayName: title ?? toolName,
+                        pieceName: typeof input['pieceName'] === 'string' ? input['pieceName'] : '',
+                        ...spreadIfDefined('connectionLabel', connectionLabel),
+                        status: isAppSuccess ? 'success' : 'failed',
+                        output: rawOutput,
+                        ...spreadIfDefined('errorMessage', errorText),
+                        timestamp: new Date().toISOString(),
                     })
                 }
                 break

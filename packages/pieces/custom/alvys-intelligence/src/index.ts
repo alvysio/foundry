@@ -6,15 +6,15 @@ import { classifyDocument } from './lib/actions/document/classify-document';
 import { routeDocument } from './lib/actions/document/route-document';
 import { parseDocument } from './lib/actions/document/parse-document';
 import { searchParsedDocuments } from './lib/actions/document/search-parsed-documents';
-import { askAlvysAi } from './lib/actions/chat/ask-alvys-ai';
+import { inference } from './lib/actions/chat/inference';
 import { summarizeText } from './lib/actions/text/summarize-text';
 import { classifyText } from './lib/actions/utility/classify-text';
-import { runAgent } from './lib/actions/agents/run-agent';
+import { askAgent } from './lib/actions/agents/ask-agent';
 
 export const alvysIntelligence = createPiece({
   displayName: 'Alvys Intelligence',
   description:
-    'Alvys-branded AI surface — chat (Ask, Summarize, Classify, Extract Structured Data) on top of the platform-configured Alvys Intelligence AI Provider, plus document classify / route / extract / parse / search. All actions are wrapped with PII redaction, prompt-injection scanning, sliding-window rate limit, and a per-tenant circuit breaker. Policy applies platform default → connection override → per-step override.',
+    'Alvys AI actions — Ask Agent (tenant Cortex Agents), Inference (Alvys AI models with tools, knowledge bases, structured output), text and document utilities. All protected by Agent Shield.',
   auth: alvysIntelligenceAuth,
   minimumSupportedRelease: '0.36.1',
   logoUrl:
@@ -22,10 +22,10 @@ export const alvysIntelligence = createPiece({
   authors: ['alvys'],
   categories: [PieceCategory.ARTIFICIAL_INTELLIGENCE],
   actions: [
-    askAlvysAi,
+    askAgent,
+    inference,
     summarizeText,
     classifyText,
-    runAgent,
     classifyDocument,
     routeDocument,
     extractDocument,

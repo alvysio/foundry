@@ -1,6 +1,5 @@
 import { t } from 'i18next';
 import { motion } from 'motion/react';
-import { useEffect, useRef } from 'react';
 
 import { chatStoreSelectors } from '@/features/chat/lib/chat-store';
 import { useChatStoreContext } from '@/features/chat/lib/chat-store-context';
@@ -16,6 +15,7 @@ import {
   ProjectPickerData,
 } from '../lib/message-parsers';
 
+import { ActionPreviewCard } from './action-preview-card';
 import { ChatInput } from './chat-input';
 import { ChatModelSelector } from './chat-model-selector';
 import { ConnectionPickerCard } from './connection-picker-card';
@@ -32,10 +32,12 @@ export function ChatBottomBar({
   isStreaming,
   onSend,
   onStop,
+  onInputChange,
   selectedModel,
   onModelChange,
   lastAssistantMessage,
   lastMessageId,
+  placeholder,
 }: ChatBottomBarProps) {
   const pendingPlanPart = useChatStoreContext((s) =>
     chatStoreSelectors.pendingPlanApproval({
@@ -45,6 +47,12 @@ export function ChatBottomBar({
   );
   const pendingMcpApproval = useChatStoreContext((s) =>
     chatStoreSelectors.pendingMcpApproval({
+      state: s,
+      lastAssistantMessage,
+    }),
+  );
+  const pendingActionPreview = useChatStoreContext((s) =>
+    chatStoreSelectors.pendingActionPreview({
       state: s,
       lastAssistantMessage,
     }),
@@ -66,15 +74,6 @@ export function ChatBottomBar({
   const rejectGate = useChatStoreContext((s) => s.rejectGate);
   const dismissGate = useChatStoreContext((s) => s.dismissGate);
   const dismissForm = useChatStoreContext((s) => s.dismissForm);
-
-  const wasStreamingRef = useRef(isStreaming);
-  useEffect(() => {
-    if (wasStreamingRef.current && !isStreaming && activeDisplayTool) {
-      const toolCallId = chatPartUtils.getToolCallId(activeDisplayTool);
-      dismissGate(toolCallId);
-    }
-    wasStreamingRef.current = isStreaming;
-  }, [isStreaming, activeDisplayTool, dismissGate]);
 
   // Plan approval from tool state
   if (pendingPlanPart) {
@@ -103,6 +102,17 @@ export function ChatBottomBar({
         onApprove={() => approveGate(pendingMcpApproval.toolCallId)}
         onReject={() => rejectGate(pendingMcpApproval.toolCallId)}
         onDismiss={() => dismissGate(pendingMcpApproval.toolCallId)}
+      />
+    );
+  }
+
+  if (pendingActionPreview) {
+    return (
+      <ActionPreviewCard
+        key={pendingActionPreview.toolCallId}
+        preview={pendingActionPreview}
+        onRun={() => approveGate(pendingActionPreview.toolCallId)}
+        onCancel={() => rejectGate(pendingActionPreview.toolCallId)}
       />
     );
   }
@@ -149,7 +159,8 @@ export function ChatBottomBar({
         isStreaming={isStreaming}
         onSend={onSend}
         onStop={onStop}
-        placeholder={t('Reply...')}
+        onInputChange={onInputChange}
+        placeholder={placeholder ?? t('Reply...')}
         rightActions={
           <ChatModelSelector
             selectedModel={selectedModel}
@@ -217,8 +228,10 @@ type ChatBottomBarProps = {
   isStreaming: boolean;
   onSend: (text: string, files?: File[]) => void;
   onStop: () => void;
+  onInputChange?: (hasInput: boolean) => void;
   selectedModel: string | null;
   onModelChange: (modelId: string) => void;
   lastAssistantMessage: ChatUIMessage | undefined;
   lastMessageId: string | undefined;
+  placeholder?: string;
 };

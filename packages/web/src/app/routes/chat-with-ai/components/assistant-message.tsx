@@ -2,7 +2,7 @@ import { BatchProgressData, PlanStepUpdate } from '@activepieces/shared';
 import { t } from 'i18next';
 import { Check, RefreshCw, Volume2, VolumeOff } from 'lucide-react';
 import { motion } from 'motion/react';
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 
 import { Markdown } from '@/components/prompt-kit/markdown';
 import {
@@ -26,6 +26,7 @@ import {
   ProjectPickerData,
 } from '../lib/message-parsers';
 
+import { ActionReceiptCard } from './action-receipt-card';
 import { ThinkingBlock } from './activity-accordion';
 import { BatchProgressCard } from './batch-progress-card';
 import { ConnectionPickerCard } from './connection-picker-card';
@@ -37,6 +38,7 @@ import { CopyIconButton } from './copy-icon-button';
 import { PlanProgressCard } from './plan-progress-card';
 import { ProjectPickerCard } from './project-picker-card';
 import { StreamingText } from './streaming-text';
+import { ToolShimmerPills } from './tool-shimmer-pills';
 
 const PROSE_CLASSES =
   'max-w-none break-words text-sm [&_p]:mb-4 [&_p:last-child]:mb-0 [&_table]:mb-4 [&_h1]:text-[18px] [&_h2]:text-[18px] [&_h3]:text-[18px]';
@@ -56,11 +58,12 @@ export const AssistantMessage = memo(function AssistantMessage({
   onRetry: () => void;
 }) {
   const approveGate = useChatStoreContext((s) => s.approveGate);
+  const toolCallMeta = useChatStoreContext((s) => s.toolCallMeta);
 
   const {
     blocks,
     hasContent,
-    lastDisplayIdx: lastDisplayToolIdx,
+    lastDisplayIdx: _,
     lastTextIdx,
   } = useMemo(() => {
     const result: MessageBlock[] = [];
@@ -111,6 +114,9 @@ export const AssistantMessage = memo(function AssistantMessage({
     for (let i = 0; i < message.parts.length; i++) {
       const p = message.parts[i];
 
+      if (p.type === 'step-start') {
+        continue;
+      }
       if (p.type === 'text' && p.text.length > 0) {
         flushThinking();
         hasText = true;
@@ -184,13 +190,69 @@ export const AssistantMessage = memo(function AssistantMessage({
 
     const lastTextIdx = result.findLastIndex((b) => b.kind === 'text');
 
+    const withReceipts: MessageBlock[] = [];
+    for (const block of result) {
+      if (block.kind !== 'thinking') {
+        withReceipts.push(block);
+        continue;
+      }
+
+      let currentSteps: ThinkingStep[] = [];
+      // Reasoning is one flat string from the AI SDK — no way to slice per tool call,
+      // so only the first sub-block after a split shows the reasoning accordion text.
+      let currentReasoning = block.reasoningText;
+
+      for (const step of block.steps) {
+        currentSteps.push(step);
+
+        if (step.kind !== 'tool') continue;
+        const toolName = chatPartUtils.getToolPartName(step.part);
+        if (toolName !== 'ap_execute_action') continue;
+        const toolCallId = chatPartUtils.getToolCallId(step.part);
+        if (!toolCallId) continue;
+
+        const hasReceipt = !!toolCallMeta[toolCallId]?.actionReceipt;
+        if (hasReceipt) {
+          if (currentSteps.length > 0 || currentReasoning.length > 0) {
+            withReceipts.push({
+              kind: 'thinking',
+              steps: currentSteps,
+              reasoningText: currentReasoning,
+            });
+          }
+          withReceipts.push({ kind: 'action-receipt', toolCallId });
+          currentSteps = [];
+          currentReasoning = '';
+        }
+      }
+
+      if (currentSteps.length > 0 || currentReasoning.length > 0) {
+        withReceipts.push({
+          kind: 'thinking',
+          steps: currentSteps,
+          reasoningText: currentReasoning,
+        });
+      } else if (block.steps.length === 0 && block.reasoningText.length === 0) {
+        withReceipts.push(block);
+      }
+    }
+
+    const lastThinkingWithReceiptsIdx = withReceipts.findLastIndex(
+      (b) => b.kind === 'thinking',
+    );
+    const cleaned = withReceipts.filter((block, idx) => {
+      if (block.kind !== 'thinking') return true;
+      if (idx === lastThinkingWithReceiptsIdx && isStreaming) return true;
+      return block.steps.length > 0 || block.reasoningText.length > 0;
+    });
+
     return {
-      blocks: result,
+      blocks: cleaned,
       hasContent: hasText,
       lastDisplayIdx,
       lastTextIdx,
     };
-  }, [message.parts, isStreaming]);
+  }, [message.parts, isStreaming, toolCallMeta]);
 
   const fullText = useMemo(
     () => (isStreaming ? '' : getTextFromParts(message.parts)),
@@ -198,6 +260,7 @@ export const AssistantMessage = memo(function AssistantMessage({
   );
 
   const { isSpeaking, isSupported: isTtsSupported, speak, stop } = useTts();
+  const [isAccordionOpen, setIsAccordionOpen] = useState(false);
 
   const hasPlanMarker = blocks.some((b) => b.kind === 'plan-marker');
   const hasRenderedContent = blocks.some(
@@ -231,19 +294,37 @@ export const AssistantMessage = memo(function AssistantMessage({
       <Message>
         <div className="min-w-0 flex-1">
           {blocks.map((block, i) => {
+            const prevBlock = i > 0 ? blocks[i - 1] : null;
+            const needsSectionGap =
+              block.kind === 'thinking' && prevBlock?.kind === 'text';
             switch (block.kind) {
-              case 'thinking':
+              case 'thinking': {
+                const hasTextAfter = blocks
+                  .slice(i + 1)
+                  .some((b) => b.kind === 'text');
+                const isMessageStreaming =
+                  isStreaming &&
+                  i === lastThinkingIdx &&
+                  !hasActiveDisplayCard &&
+                  !hasTextAfter;
+                const lastStep =
+                  block.steps.length > 0
+                    ? block.steps[block.steps.length - 1]
+                    : null;
+                const lastToolStep =
+                  lastStep?.kind === 'tool' ? lastStep : null;
+                const lastThinkingStatus =
+                  block.steps.filter((s) => s.kind === 'thinking-status').at(-1)
+                    ?.text ?? null;
                 return (
-                  <div key={`thinking-${i}`} className="py-2">
+                  <div
+                    key={`thinking-${i}`}
+                    className={cn('py-2', needsSectionGap && 'mt-6')}
+                  >
                     <ThinkingBlock
                       thinkingSteps={block.steps}
                       reasoningText={block.reasoningText}
-                      isStreaming={
-                        isStreaming &&
-                        i === lastThinkingIdx &&
-                        !hasActiveDisplayCard &&
-                        i > lastDisplayToolIdx
-                      }
+                      isStreaming={isMessageStreaming}
                       thinkingDurationMs={
                         i === lastThinkingIdx
                           ? (
@@ -253,9 +334,29 @@ export const AssistantMessage = memo(function AssistantMessage({
                             ).thinkingDurationMs
                           : undefined
                       }
+                      onOpenChange={setIsAccordionOpen}
                     />
+                    {isMessageStreaming &&
+                      !isAccordionOpen &&
+                      lastStep &&
+                      (lastToolStep ? (
+                        <ToolShimmerPills
+                          toolSteps={block.steps.filter(
+                            (s): s is ThinkingStep & { kind: 'tool' } =>
+                              s.kind === 'tool',
+                          )}
+                          lastThinkingStatus={lastThinkingStatus}
+                        />
+                      ) : (
+                        lastStep.kind !== 'tool' && (
+                          <p className="pt-2 text-sm text-muted-foreground">
+                            {lastStep.text}
+                          </p>
+                        )
+                      ))}
                   </div>
                 );
+              }
               case 'text': {
                 const isActiveText = isStreaming && i === lastTextIdx;
                 return (
@@ -304,10 +405,41 @@ export const AssistantMessage = memo(function AssistantMessage({
                     <BatchProgressCard progress={block.data} />
                   </div>
                 );
+              case 'action-receipt': {
+                const receipt = toolCallMeta[block.toolCallId]?.actionReceipt;
+                if (!receipt) return null;
+                return (
+                  <div key={`receipt-${block.toolCallId}`} className="py-2">
+                    <ActionReceiptCard receipt={receipt} />
+                  </div>
+                );
+              }
               default:
                 return null;
             }
           })}
+
+          {!isStreaming && !hasContent && hasRenderedContent && (
+            <motion.div
+              className="flex items-center gap-2 py-3 text-sm text-muted-foreground"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+            >
+              <span>
+                {t(
+                  "The agent completed its work but didn't provide a summary.",
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={onRetry}
+                className={cn(ACTION_BUTTON_CLASS, 'inline-flex')}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
+            </motion.div>
+          )}
 
           <MessageActions
             className={cn(
@@ -443,13 +575,16 @@ function DisplayToolCard({
   const toolCallId = chatPartUtils.getToolCallId(part);
 
   switch (toolName) {
-    case 'ap_show_connection_required':
+    case 'ap_show_connection_required': {
+      if (!isInteractive && toolOutput?.['dismissed'] === true) return null;
       return (
         <ConnectionsRequiredCard
           connections={[data as unknown as ConnectionRequiredData]}
           onResolve={(payload) => onResolve(toolCallId, payload)}
+          isInteractive={isInteractive}
         />
       );
+    }
     case 'ap_show_connection_picker': {
       const selectedLabel =
         typeof toolOutput?.['label'] === 'string'
@@ -522,7 +657,10 @@ function AnsweredQuestionsCard({ answersText }: { answersText: string }) {
 
 function StreamingCursor() {
   return (
-    <span className="inline-block w-[3px] h-[1.1em] bg-foreground/70 rounded-sm align-text-bottom ml-0.5 animate-pulse" />
+    <span
+      className="inline-block w-[3px] h-[1.1em] bg-foreground/70 rounded-sm align-text-bottom ml-0.5 animate-pulse"
+      style={{ animationDuration: '3s' }}
+    />
   );
 }
 
@@ -549,4 +687,5 @@ type MessageBlock =
   | { kind: 'text'; text: string }
   | { kind: 'display-tool'; part: AnyToolPart }
   | { kind: 'plan-marker'; part: AnyToolPart }
-  | { kind: 'batch-progress'; data: BatchProgressData };
+  | { kind: 'batch-progress'; data: BatchProgressData }
+  | { kind: 'action-receipt'; toolCallId: string };
