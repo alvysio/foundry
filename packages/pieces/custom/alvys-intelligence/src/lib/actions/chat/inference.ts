@@ -24,15 +24,17 @@ import {
 import { hasToolCall, stepCountIs, streamText } from 'ai';
 import { inspect } from 'util';
 
+import { createAIModel, createEmbeddingModel } from '@activepieces/piece-ai';
+
+// Vendored from the ai piece: the published @activepieces/piece-ai package
+// does not re-export the web-search and agent-tool helpers from its index.
 import {
-  agentOutputBuilder,
-  agentUtils,
   buildWebSearchConfig,
   buildWebSearchOptionsProperty,
-  constructAgentTools,
-  createAIModel,
-  createEmbeddingModel,
-} from '@activepieces/piece-ai';
+} from '../../vendor/piece-ai/web-search';
+import { constructAgentTools } from '../../vendor/piece-ai/tools';
+import { agentOutputBuilder } from '../../vendor/piece-ai/agent-output-builder';
+import { agentUtils } from '../../vendor/piece-ai/utils';
 
 import { rateLimiter } from '../../runtime/rate-limiter';
 import { circuitBreaker } from '../../runtime/circuit-breaker';
