@@ -1,0 +1,32 @@
+name: Lint PR Internal
+
+# Validates PR titles against Conventional Commits for PRs targeting `internal`.
+# Upstream validate-pr-title.yml uses amannn/action-semantic-pull-request, which
+# the repo Actions policy blocks (unverified third-party action → startup_failure).
+# Same rules as commitlint.config.js (@commitlint/config-conventional).
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize]
+    branches: [internal]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  validate-title:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const title = context.payload.pull_request.title;
+            const types = ['build', 'chore', 'ci', 'docs', 'feat', 'fix', 'perf', 'refactor', 'revert', 'style', 'test'];
+            const pattern = new RegExp(`^(${types.join('|')})(\\([^)]+\\))?!?: .+`);
+            if (!pattern.test(title)) {
+              core.setFailed(
+                `PR title "${title}" does not follow Conventional Commits.\n` +
+                `Expected format: type(optional-scope): summary\n` +
+                `Allowed types: ${types.join(', ')}`
+              );
+            }

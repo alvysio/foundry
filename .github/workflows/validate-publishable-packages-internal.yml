@@ -1,0 +1,46 @@
+name: Validate publishable packages Internal
+
+# Fork-side variant of validate-publishable-packages.yml for PRs targeting
+# `internal`. Covers packages/pieces/custom/ (the scan walks all of
+# packages/pieces). Uses only `actions/*` actions — the repo Actions policy
+# blocks unverified third-party actions, so bun is installed via npm.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [internal]
+    paths:
+      - 'packages/pieces/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-publishable-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup nodejs
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Setup Bun
+        run: npm install -g bun
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ hashFiles('bun.lock', 'package.json') }}
+          restore-keys: bun-
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: validate publishable packages
+        run: npx ts-node -r tsconfig-paths/register -P packages/server/engine/tsconfig.lib.json tools/scripts/validate-publishable-packages.ts
