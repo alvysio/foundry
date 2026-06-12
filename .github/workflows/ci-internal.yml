@@ -15,7 +15,7 @@ on:
     branches: [internal]
 
 concurrency:
-  group: ci-internal-${{ github.head_ref }}
+  group: ci-internal-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
