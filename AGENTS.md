@@ -1,3 +1,15 @@
+# Foundry (Alvys fork of Activepieces)
+
+This repo is **Foundry** — Alvys' internally maintained fork of Activepieces. It exists as a wrapper for internal usage: the custom pieces and integrations Alvys builds and maintains live here, on top of the upstream platform. Everything from `# Activepieces` down is upstream guidance and still applies.
+
+## Fork Rules
+
+- **Branches**: `internal` (default) is the working branch — every PR targets `internal`. `main` tracks upstream `activepieces/activepieces`; never commit Alvys work to `main`.
+- **Custom pieces** live in `packages/pieces/custom/` (`alvys`, `alvys-intelligence`). In-repo they use the `@activepieces/piece-*` package scope; they publish to GitHub Packages under `@alvysio` via `release-alvys-pieces.yml` (`beta` dist-tag from PR builds, `latest` from stable, manual `workflow_dispatch` supported).
+- **Workflows must be allowlist-safe**: the repo Actions policy only allows `actions/*`, GitHub-owned, and verified-creator actions — anything else causes `startup_failure`. Install bun via `npm install -g bun`; cache turbo with `actions/cache` on `.turbo/cache`.
+- **Don't modify upstream workflow files** — add fork-owned files suffixed `-internal` instead (`ci-internal.yml`, `validate-pr-title-internal.yml`, `validate-publishable-packages-internal.yml`) so upstream syncs stay conflict-free.
+- **Vendor neutrality**: never name third-party AI/service vendors in piece descriptions, props, error messages, or user-facing strings — describe the capability instead.
+
 # Activepieces
 
 Open-source AI-first workflow automation platform. Self-hosted or cloud. 400+ pieces. MCP support.

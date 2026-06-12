@@ -1,3 +1,31 @@
+# Foundry
+
+**Foundry is [Alvys](https://alvys.com)' internally maintained fork of [Activepieces](https://github.com/activepieces/activepieces).** It wraps the upstream platform so Alvys can build, validate, and ship the custom pieces and integrations it maintains, on its own release cadence, without diverging from upstream.
+
+## Why this fork exists
+
+- **Custom pieces** — integrations Alvys builds and maintains live under [`packages/pieces/custom/`](packages/pieces/custom/):
+  - **Alvys** — actions and triggers for the Alvys TMS API (loads, tenders, documents, notes, and more)
+  - **Alvys Intelligence** — AI document intelligence: extraction, classification, and parsing actions
+- **Controlled upstream tracking** — upstream changes are pulled in deliberately instead of consumed blindly, so Alvys work is always validated against a known base.
+- **Private distribution** — pieces publish to GitHub Packages under the `@alvysio` scope (`beta` dist-tag from PR builds, `latest` from stable releases). Self-hosted Activepieces servers consume them by pointing the `@alvysio` scope at `npm.pkg.github.com`.
+
+## Branch model
+
+| Branch | Purpose |
+|---|---|
+| `internal` (default) | Alvys' working branch — all PRs target this |
+| `main` | Tracks upstream `activepieces/activepieces` |
+
+## Working in this repo
+
+- Open PRs against `internal`. PR titles follow [Conventional Commits](https://www.conventionalcommits.org/) (enforced by CI).
+- Fork-owned workflows are suffixed `-internal`: `ci-internal.yml` (lint, build, tests, migration checks), `validate-pr-title-internal.yml`, and `validate-publishable-packages-internal.yml`.
+- Piece publishing runs through `release-alvys-pieces.yml` (also manually triggerable via `workflow_dispatch`).
+
+Everything below is the upstream Activepieces README.
+
+---
 
 <h1 align="center">
   <a
