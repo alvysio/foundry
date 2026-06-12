@@ -5,7 +5,9 @@ name: CI Internal
 # and never runs on this fork — this is the fork-side equivalent. Differences:
 #   - triggers only on PRs targeting `internal`
 #   - diffs against the PR base branch instead of hardcoded origin/main
-#   - GitHub-hosted turbo cache (no S3 cache secrets on the fork)
+#   - only `actions/*` actions: the repo Actions policy blocks unverified
+#     third-party actions (oven-sh/setup-bun, rharkor/caching-for-turbo cause
+#     startup_failure), so bun is installed via npm and turbo uses actions/cache
 #   - piece detection includes packages/pieces/custom/ (Alvys-owned pieces)
 
 on:
@@ -32,9 +34,8 @@ jobs:
         with:
           node-version: 24
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+      - name: Setup Bun
+        run: npm install -g bun
 
       - name: Cache bun deps
         uses: actions/cache@v5
@@ -44,7 +45,11 @@ jobs:
           restore-keys: bun-
 
       - name: Turbo Cache
-        uses: rharkor/caching-for-turbo@v2.4.2
+        uses: actions/cache@v5
+        with:
+          path: .turbo/cache
+          key: turbo-${{ github.sha }}
+          restore-keys: turbo-
 
       - run: bun install
 
