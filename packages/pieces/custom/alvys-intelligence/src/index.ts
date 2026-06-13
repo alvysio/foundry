@@ -3,7 +3,6 @@ import { PieceCategory } from '@activepieces/shared';
 import { alvysIntelligenceAuth } from './lib/auth';
 import { extractDocument } from './lib/actions/document/extract-document';
 import { classifyDocument } from './lib/actions/document/classify-document';
-import { routeDocument } from './lib/actions/document/route-document';
 import { parseDocument } from './lib/actions/document/parse-document';
 import { searchParsedDocuments } from './lib/actions/document/search-parsed-documents';
 import { inference } from './lib/actions/chat/inference';
@@ -27,7 +26,6 @@ export const alvysIntelligence = createPiece({
     summarizeText,
     classifyText,
     classifyDocument,
-    routeDocument,
     extractDocument,
     parseDocument,
     searchParsedDocuments,
