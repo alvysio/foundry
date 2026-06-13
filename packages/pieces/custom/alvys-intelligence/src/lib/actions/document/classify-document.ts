@@ -21,12 +21,20 @@ const SUPPORTED_TYPES: { label: string; value: string }[] = [
   { label: 'EDI 204 Tender (image)', value: 'edi_204_image' },
 ];
 
+/**
+ * Classify a transportation document into a single category. The `category`
+ * output is a stable slug meant to drive a downstream Router — add one branch
+ * per document type whose condition matches `category`, then place a typed
+ * Extract Document step inside each branch. Below the confidence threshold (or
+ * outside the allowed set), `category` is `unknown` so a Router fallback branch
+ * catches it.
+ */
 export const classifyDocument = createAction({
   auth: alvysIntelligenceAuth,
   name: 'classify_document',
   displayName: 'Classify Document',
   description:
-    'Detect the document type (POD, rate confirmation, BOL, invoice, etc.) for a single file. Use the output to route to a typed Extract Document step.',
+    'Detect the document type (POD, rate confirmation, BOL, invoice, etc.) for a single file. Pair with a Router to branch by category and route each type into its own Extract Document step.',
   props: {
     file: Property.File({
       displayName: 'Document',
@@ -42,7 +50,7 @@ export const classifyDocument = createAction({
     minConfidence: Property.Number({
       displayName: 'Minimum Confidence',
       description:
-        'Below this threshold, detected type is reported as "unknown". Only applied when the classifier returns a confidence score.',
+        'Below this threshold, `category` is reported as "unknown". Only applied when the classifier returns a confidence score.',
       required: false,
       defaultValue: 0.6,
     }),
@@ -108,18 +116,24 @@ export const classifyDocument = createAction({
       const { choice, confidence: rawConfidence } = bemProvider.readClassifyOutput(result);
       const confidence = rawConfidence ?? null;
 
-      let detectedType = choice ?? 'unknown';
-      if (allowed && allowed.length > 0 && !allowed.includes(detectedType)) {
-        detectedType = 'unknown';
+      let category = choice ?? 'unknown';
+      let fallbackReason: string | null = null;
+      if (allowed && allowed.length > 0 && !allowed.includes(category)) {
+        category = 'unknown';
+        fallbackReason = 'not_in_allowed_types';
       }
       if (confidence !== null && confidence < minConfidence) {
-        detectedType = 'unknown';
+        category = 'unknown';
+        fallbackReason = 'below_min_confidence';
       }
 
       return {
-        detectedType,
-        choice: choice ?? null,
+        category,
+        detectedType: choice ?? null,
         confidence,
+        fallbackUsed: category === 'unknown',
+        fallbackReason,
+        supportedCategories: SUPPORTED_TYPES,
         status: result.status,
         callId: result.callID,
         workflowName,
